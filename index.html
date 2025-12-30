@@ -134,14 +134,14 @@
 
         // --- DATA DEFAULT ---
         const DEFAULT_SUBJECTS = [
-            { id: 'mtk', name: 'Matematika', levels: [10, 11, 12], alias: ['MATEMATIKA', 'MATH'] },
-            { id: 'ind', name: 'B. Indonesia', levels: [10, 11, 12], alias: ['BAHASA INDONESIA', 'B. INDO', 'INDONESIA'] },
-            { id: 'ing', name: 'B. Inggris', levels: [10, 11, 12], alias: ['BAHASA INGGRIS', 'B. ING', 'INGGRIS'] },
-            { id: 'fis', name: 'Fisika', levels: [10, 11, 12], alias: ['FISIKA'] },
-            { id: 'kim', name: 'Kimia', levels: [10, 11, 12], alias: ['KIMIA'] },
-            { id: 'bio', name: 'Biologi', levels: [10, 11, 12], alias: ['BIOLOGI'] },
-            { id: 'eko', name: 'Ekonomi', levels: [10, 11, 12], alias: ['EKONOMI'] },
-            { id: 'sej', name: 'Sejarah', levels: [10, 11, 12], alias: ['SEJARAH'] }
+            { id: 'ind', name: 'B. Indonesia', levels: [10, 11, 12], alias: ['BAHASA INDONESIA', 'B. INDO', 'INDONESIA'], order: 1 },
+            { id: 'ing', name: 'B. Inggris', levels: [10, 11, 12], alias: ['BAHASA INGGRIS', 'B. ING', 'INGGRIS'], order: 2 },
+            { id: 'mtk', name: 'Matematika', levels: [10, 11, 12], alias: ['MATEMATIKA', 'MATH'], order: 3 },
+            { id: 'fis', name: 'Fisika', levels: [10, 11, 12], alias: ['FISIKA'], order: 4 },
+            { id: 'kim', name: 'Kimia', levels: [10, 11, 12], alias: ['KIMIA'], order: 5 },
+            { id: 'bio', name: 'Biologi', levels: [10, 11, 12], alias: ['BIOLOGI'], order: 6 },
+            { id: 'eko', name: 'Ekonomi', levels: [10, 11, 12], alias: ['EKONOMI'], order: 7 },
+            { id: 'sej', name: 'Sejarah', levels: [10, 11, 12], alias: ['SEJARAH'], order: 8 }
         ];
 
         const INITIAL_STUDENTS = [
@@ -243,13 +243,13 @@
                             const { initializeApp, getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken, getFirestore } = window.firebaseModules;
                             try {
                                 const firebaseConfig = {
-  apiKey: "AIzaSyDVoiRGqGJynXm2Yn-Uwbjly94wiUyRPhQ",
-  authDomain: "pdss-sma.firebaseapp.com",
-  projectId: "pdss-sma",
-  storageBucket: "pdss-sma.firebasestorage.app",
-  messagingSenderId: "253347223286",
-  appId: "1:253347223286:web:0372926aa6ccc324e57ed7"
-};
+                                    apiKey: "AIzaSyAN-g1GD_vFpO6sZAKyJ6WrZC0lTXQaxcc",
+                                    authDomain: "pdss-bk.firebaseapp.com",
+                                    projectId: "pdss-bk",
+                                    storageBucket: "pdss-bk.firebasestorage.app",
+                                    messagingSenderId: "755442420988",
+                                    appId: "1:755442420988:web:28a274042fc7b77a5a9b79"
+                                };
                                 
                                 const app = initializeApp(firebaseConfig);
                                 const auth = getAuth(app);
@@ -292,7 +292,11 @@
                     if (loadedSubjects.length === 0 && !snapshot.metadata.fromCache) {
                         // Init defaults if empty
                         DEFAULT_SUBJECTS.forEach(s => setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'subjects_v1', s.id), s));
-                    } else setSubjects(loadedSubjects);
+                    } else {
+                        // Sort by 'order' property when loading from DB
+                        loadedSubjects.sort((a, b) => (a.order || 99) - (b.order || 99));
+                        setSubjects(loadedSubjects);
+                    }
                 }, (error) => {
                     if(error.code === 'permission-denied') setPermissionError(true);
                     setLoading(false);
@@ -375,11 +379,24 @@
                 if (!newSubjectName.trim()) return;
                 const id = newSubjectName.toLowerCase().replace(/[^a-z0-9]/g, '').substring(0, 10) + Date.now().toString().slice(-3);
                 const existing = subjects.find(s => s.name.toLowerCase() === newSubjectName.toLowerCase());
+                
+                // Determine new order (last + 1)
+                const maxOrder = subjects.reduce((max, s) => (s.order > max ? s.order : max), 0);
+                const nextOrder = maxOrder + 1;
+
                 if (existing) {
                     if (!existing.levels.includes(activeLevelTab)) dbSaveSubject({ ...existing, levels: [...existing.levels, activeLevelTab] });
-                } else dbSaveSubject({ id, name: newSubjectName, levels: [activeLevelTab] });
+                } else dbSaveSubject({ id, name: newSubjectName, levels: [activeLevelTab], order: nextOrder });
                 setNewSubjectName("");
             };
+
+            const handleUpdateSubjectOrder = async (subject, newVal) => {
+                const val = parseInt(newVal);
+                if (!isNaN(val) && subject.order !== val) {
+                    await dbSaveSubject({ ...subject, order: val });
+                }
+            };
+
             const handleDeleteSubjectFromLevel = (subjectId, level) => {
                 if(confirm("Hapus mata pelajaran ini?")) {
                     const subject = subjects.find(s => s.id === subjectId);
@@ -390,7 +407,11 @@
                     }
                 }
             };
-            const getSubjectsByLevel = (level) => subjects.filter(s => s.levels.includes(level));
+            const getSubjectsByLevel = (level) => {
+                return subjects
+                    .filter(s => s.levels.includes(level))
+                    .sort((a, b) => (a.order || 99) - (b.order || 99));
+            };
             
             const calculateGrandTotal = (student) => {
                 let total = 0;
@@ -491,7 +512,10 @@
             };
 
             const handleExportFullData = () => {
-                const headers = ["NIS", "NISN", "NAMA SISWA", "KELAS", "SEMESTER", ...subjects.map(s => s.name.toUpperCase()), "TOTAL (SEM)", "RERATA (SEM)", "TOTAL AKUMULASI", "RERATA (TOTAL)", "PERINGKAT"];
+                // Ensure columns are sorted by order
+                const sortedSubjects = [...subjects].sort((a, b) => (a.order || 99) - (b.order || 99));
+                
+                const headers = ["NIS", "NISN", "NAMA SISWA", "KELAS", "SEMESTER", ...sortedSubjects.map(s => s.name.toUpperCase()), "TOTAL (SEM)", "RERATA (SEM)", "TOTAL AKUMULASI", "RERATA (TOTAL)", "PERINGKAT"];
                 const dataRows = [];
                 const semesterMap = { 1: "Sem 1", 2: "Sem 2", 3: "Sem 3", 4: "Sem 4", 5: "Sem 5" };
                 const studentStatsMap = {};
@@ -502,7 +526,7 @@
                     SEMESTERS.forEach((sem, semIdx) => {
                         const row = [student.nis, student.nisn || "-", student.name, student.class || "-", semesterMap[sem.id]];
                         let semTotal = 0, count = 0;
-                        subjects.forEach(sub => {
+                        sortedSubjects.forEach(sub => {
                             if (sub.levels.includes(sem.level)) {
                                 const val = student.grades?.[sem.id]?.[sub.id] || 0;
                                 row.push(val === 0 ? "" : val);
@@ -1157,9 +1181,19 @@ service cloud.firestore {
                             </form>
                             <div className="max-h-60 overflow-y-auto space-y-2">
                                 {getSubjectsByLevel(activeLevelTab).map(s => (
-                                    <div key={s.id} className="flex justify-between p-2 border rounded items-center hover:bg-slate-50">
-                                        <span>{s.name}</span>
-                                        <button onClick={()=>handleDeleteSubjectFromLevel(s.id, activeLevelTab)} className="text-red-500 text-xs bg-red-50 p-1 rounded hover:bg-red-100 flex items-center gap-1 font-bold border border-red-200"><Trash2 size={12}/> Hapus</button>
+                                    <div key={s.id} className="flex justify-between p-2 border rounded items-center hover:bg-slate-50 bg-white gap-3">
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-xs text-slate-400 w-4">No.</span>
+                                            <input 
+                                                type="number" 
+                                                defaultValue={s.order} 
+                                                onBlur={(e) => handleUpdateSubjectOrder(s, e.target.value)}
+                                                onKeyDown={(e) => {if(e.key==='Enter') e.target.blur()}}
+                                                className="w-12 border p-1 rounded text-center font-bold text-slate-700 focus:ring-2 focus:ring-blue-500 outline-none"
+                                            />
+                                        </div>
+                                        <span className="flex-1 font-medium text-slate-700">{s.name}</span>
+                                        <button onClick={()=>handleDeleteSubjectFromLevel(s.id, activeLevelTab)} className="text-red-500 text-xs bg-red-50 p-2 rounded hover:bg-red-100 flex items-center gap-1 font-bold border border-red-200 transition-colors"><Trash2 size={14}/> Hapus</button>
                                     </div>
                                 ))}
                             </div>
