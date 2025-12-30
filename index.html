@@ -397,6 +397,79 @@
                 }
             };
 
+            const handleDownloadSubjectTemplate = () => {
+                const levelSubjects = getSubjectsByLevel(activeLevelTab);
+                const headers = ["ID_MAPEL (SYSTEM ONLY)", "NAMA_MAPEL", "URUTAN"];
+                // Prepare data: Existing subjects first
+                const data = levelSubjects.map(s => [s.id, s.name, s.order || ""]);
+                
+                // Explain usage in console or alert? No, file header is enough.
+                const ws = XLSX.utils.aoa_to_sheet([headers, ...data]);
+                
+                // Add column width for better visibility
+                ws['!cols'] = [{wch: 25}, {wch: 30}, {wch: 10}];
+
+                const wb = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(wb, ws, `Mapel_Kls_${activeLevelTab}`);
+                XLSX.writeFile(wb, `TEMPLATE_MAPEL_KLS_${activeLevelTab}.xlsx`);
+            };
+
+            const handleSubjectFileUpload = (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = async (evt) => {
+                    const wb = XLSX.read(evt.target.result, {type:'binary'});
+                    const ws = wb.Sheets[wb.SheetNames[0]];
+                    const rows = XLSX.utils.sheet_to_json(ws, {header:1});
+                    
+                    if (!rows || rows.length < 2) return alert("File kosong atau format salah.");
+                    
+                    // Headers expected: ID, NAMA, URUTAN (Index 0, 1, 2)
+                    let updatedCount = 0;
+                    let createdCount = 0;
+
+                    for(let i=1; i<rows.length; i++) {
+                        const row = rows[i];
+                        if(!row || (!row[0] && !row[1])) continue; // Skip empty rows
+
+                        const id = row[0] ? String(row[0]).trim() : null;
+                        const name = row[1] ? String(row[1]).trim() : null;
+                        const order = parseInt(row[2]) || 99;
+
+                        if (!name) continue;
+
+                        let existingSub = null;
+                        if (id) existingSub = subjects.find(s => s.id === id);
+                        
+                        // Fallback: Try match by name if ID empty
+                        if (!existingSub) {
+                            existingSub = subjects.find(s => s.name.toLowerCase() === name.toLowerCase());
+                        }
+
+                        if (existingSub) {
+                            // Update Existing
+                            // Ensure current level is in the levels array
+                            const newLevels = existingSub.levels.includes(activeLevelTab) ? existingSub.levels : [...existingSub.levels, activeLevelTab];
+                            
+                            // Only update if changes exist to save writes
+                            if(existingSub.name !== name || existingSub.order !== order || !existingSub.levels.includes(activeLevelTab)) {
+                                await dbSaveSubject({ ...existingSub, name: name, order: order, levels: newLevels });
+                                updatedCount++;
+                            }
+                        } else {
+                            // Create New
+                            const newId = name.toLowerCase().replace(/[^a-z0-9]/g, '').substring(0, 10) + Date.now().toString().slice(-3);
+                            await dbSaveSubject({ id: newId, name: name, order: order, levels: [activeLevelTab] });
+                            createdCount++;
+                        }
+                    }
+                    alert(`Proses Selesai!\nUpdate: ${updatedCount} Mapel\nTambah Baru: ${createdCount} Mapel`);
+                    e.target.value = null; // Reset input
+                };
+                reader.readAsBinaryString(file);
+            };
+
             const handleDeleteSubjectFromLevel = (subjectId, level) => {
                 if(confirm("Hapus mata pelajaran ini?")) {
                     const subject = subjects.find(s => s.id === subjectId);
@@ -1175,9 +1248,26 @@ service cloud.firestore {
                             <div className="flex border-b">
                                 {[10,11,12].map(l => <button key={l} onClick={()=>setActiveLevelTab(l)} className={`px-4 py-2 ${activeLevelTab===l?'border-b-2 border-blue-600':''}`}>Kls {l}</button>)}
                             </div>
-                            <form onSubmit={handleAddSubject} className="flex gap-2">
-                                <input value={newSubjectName} onChange={e=>setNewSubjectName(e.target.value)} placeholder="Nama Mapel..." className="border p-2 rounded flex-1"/>
-                                <button className="bg-blue-600 text-white px-4 rounded">Tambah</button>
+                            
+                            <div className="bg-slate-50 p-3 rounded border border-slate-200">
+                                <div className="flex justify-between items-center mb-3">
+                                    <h4 className="font-bold text-sm text-slate-700">Import/Export Mapel Excel</h4>
+                                    <div className="flex gap-2">
+                                        <button onClick={handleDownloadSubjectTemplate} className="px-3 py-1 bg-white border border-slate-300 rounded text-xs hover:bg-slate-50 flex items-center gap-1 text-slate-600"><Download size={12}/> Template</button>
+                                        <label className="px-3 py-1 bg-green-600 text-white rounded text-xs hover:bg-green-700 flex items-center gap-1 cursor-pointer">
+                                            <UploadCloud size={12}/> Upload Excel
+                                            <input type="file" onChange={handleSubjectFileUpload} className="hidden"/>
+                                        </label>
+                                    </div>
+                                </div>
+                                <div className="text-[10px] text-slate-500 leading-tight">
+                                    * Download template untuk mengedit mapel yang ada atau menambah baru secara massal.
+                                </div>
+                            </div>
+
+                            <form onSubmit={handleAddSubject} className="flex gap-2 border-t pt-4">
+                                <input value={newSubjectName} onChange={e=>setNewSubjectName(e.target.value)} placeholder="Nama Mapel Baru..." className="border p-2 rounded flex-1 text-sm"/>
+                                <button className="bg-blue-600 text-white px-4 rounded text-sm hover:bg-blue-700">Tambah Manual</button>
                             </form>
                             <div className="max-h-60 overflow-y-auto space-y-2">
                                 {getSubjectsByLevel(activeLevelTab).map(s => (
@@ -1189,11 +1279,11 @@ service cloud.firestore {
                                                 defaultValue={s.order} 
                                                 onBlur={(e) => handleUpdateSubjectOrder(s, e.target.value)}
                                                 onKeyDown={(e) => {if(e.key==='Enter') e.target.blur()}}
-                                                className="w-12 border p-1 rounded text-center font-bold text-slate-700 focus:ring-2 focus:ring-blue-500 outline-none"
+                                                className="w-12 border p-1 rounded text-center font-bold text-slate-700 focus:ring-2 focus:ring-blue-500 outline-none text-sm"
                                             />
                                         </div>
-                                        <span className="flex-1 font-medium text-slate-700">{s.name}</span>
-                                        <button onClick={()=>handleDeleteSubjectFromLevel(s.id, activeLevelTab)} className="text-red-500 text-xs bg-red-50 p-2 rounded hover:bg-red-100 flex items-center gap-1 font-bold border border-red-200 transition-colors"><Trash2 size={14}/> Hapus</button>
+                                        <span className="flex-1 font-medium text-slate-700 text-sm">{s.name}</span>
+                                        <button onClick={()=>handleDeleteSubjectFromLevel(s.id, activeLevelTab)} className="text-red-500 text-xs bg-red-50 p-2 rounded hover:bg-red-100 flex items-center gap-1 font-bold border border-red-200 transition-colors"><Trash2 size={14}/></button>
                                     </div>
                                 ))}
                             </div>
