@@ -21,9 +21,10 @@
     <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.22.20/babel.min.js"></script>
     
-    <!-- Tailwind CSS & SheetJS -->
+    <!-- Tailwind CSS, SheetJS, ChartJS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     
     <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@0.260.0/dist/umd/lucide.min.js"></script>
@@ -108,12 +109,24 @@
         const Filter = createIcon('Filter'); const UserMinus = createIcon('UserMinus'); 
         const GraduationCap = createIcon('GraduationCap'); const Database = createIcon('Database'); const Trash = createIcon('Trash');
         const Menu = createIcon('Menu');
+        const TrendingUp = createIcon('TrendingUp'); const TrendingDown = createIcon('TrendingDown');
+        const Activity = createIcon('Activity'); const LineChart = createIcon('LineChart');
 
         const SEMESTERS = [
             { id: 1, label: 'Sem 1 (Kls 10)', level: 10 }, { id: 2, label: 'Sem 2 (Kls 10)', level: 10 },
             { id: 3, label: 'Sem 3 (Kls 11)', level: 11 }, { id: 4, label: 'Sem 4 (Kls 11)', level: 11 },
             { id: 5, label: 'Sem 5 (Kls 12)', level: 12 },
         ];
+
+        const getBadgeClass = (trend) => {
+            switch(trend) {
+                case 'NAIK': return 'bg-emerald-100 text-emerald-700';
+                case 'TURUN': return 'bg-red-100 text-red-700';
+                case 'FLUKTUATIF': return 'bg-blue-100 text-blue-700';
+                case 'STAGNAN': return 'bg-slate-200 text-slate-700';
+                default: return 'bg-slate-100 text-slate-500';
+            }
+        };
 
         const Card = ({ title, value, icon, gradient }) => (
             <div className="glass-card p-6 rounded-3xl hover:-translate-y-1 transition-all duration-300 flex items-center space-x-5 group cursor-default">
@@ -133,8 +146,8 @@
                 <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in">
                     <div className={`bg-white rounded-[2rem] shadow-2xl w-full ${maxWidth} max-h-[90vh] overflow-hidden flex flex-col`}>
                         <div className="flex justify-between items-center p-8 border-b border-slate-100 bg-white/80 backdrop-blur-md z-10 flex-shrink-0">
-                            <h2 className="text-2xl font-extrabold text-slate-800 tracking-tight">{title}</h2>
-                            <button onClick={onClose} className="p-2 bg-slate-100 hover:bg-red-100 hover:text-red-600 rounded-full transition-colors text-slate-500">
+                            <h2 className="text-2xl font-extrabold text-slate-800 tracking-tight flex items-center gap-2">{title}</h2>
+                            <button type="button" onClick={onClose} className="p-2 bg-slate-100 hover:bg-red-100 hover:text-red-600 rounded-full transition-colors text-slate-500">
                                 <X size={20} />
                             </button>
                         </div>
@@ -144,6 +157,71 @@
                     </div>
                 </div>
             );
+        };
+
+        // --- COMPONENT GRAFIK CHART.JS DINAMIS ---
+        const ChartComponent = ({ student, graphMode, subjectAnalysis }) => {
+            const chartRef = useRef(null);
+            
+            useEffect(() => {
+                let chartInstance = null;
+                if (chartRef.current && window.Chart && student) {
+                    const ctx = chartRef.current.getContext('2d');
+                    
+                    let semsData = [];
+                    let labelName = "";
+                    let color = "#4f46e5"; // Indigo default
+                    let bgColor = "rgba(79, 70, 229, 0.15)";
+                    
+                    if (graphMode === 'AVERAGE') {
+                        semsData = [1,2,3,4,5].map(i => student.stats.sems[i].avg !== "-" ? parseFloat(student.stats.sems[i].avg) : null);
+                        labelName = "Rata-rata Keseluruhan";
+                    } else {
+                        const sub = subjectAnalysis.find(s => s.name === graphMode);
+                        if (sub) {
+                            semsData = [1,2,3,4,5].map(i => sub.sems[i] !== "-" ? sub.sems[i] : null);
+                            labelName = `Nilai ${graphMode}`;
+                            color = "#059669"; // Emerald for subject view
+                            bgColor = "rgba(5, 150, 105, 0.15)";
+                        }
+                    }
+                    
+                    chartInstance = new window.Chart(ctx, {
+                        type: 'line',
+                        data: {
+                            labels: ['Sem 1', 'Sem 2', 'Sem 3', 'Sem 4', 'Sem 5'],
+                            datasets: [{
+                                label: labelName,
+                                data: semsData,
+                                borderColor: color,
+                                backgroundColor: bgColor,
+                                borderWidth: 3,
+                                pointBackgroundColor: '#fff',
+                                pointBorderColor: color,
+                                pointBorderWidth: 2,
+                                pointRadius: 6,
+                                pointHoverRadius: 8,
+                                fill: true,
+                                tension: 0.3
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: { legend: { display: false } },
+                            scales: {
+                                y: {
+                                    suggestedMin: 70,
+                                    suggestedMax: 100
+                                }
+                            }
+                        }
+                    });
+                }
+                return () => { if (chartInstance) chartInstance.destroy(); }
+            }, [student, graphMode, subjectAnalysis]);
+
+            return <div className="w-full h-64 relative"><canvas ref={chartRef}></canvas></div>;
         };
 
         const App = () => {
@@ -159,6 +237,11 @@
             
             const [isModalOpen, setIsModalOpen] = useState(false);
             const [isSubjectModalOpen, setIsSubjectModalOpen] = useState(false);
+            
+            const [isGraphModalOpen, setIsGraphModalOpen] = useState(false);
+            const [selectedGraphStudent, setSelectedGraphStudent] = useState(null);
+            const [selectedGraphSubject, setSelectedGraphSubject] = useState('AVERAGE'); // AVERAGE or Subject Name
+
             const [editingStudent, setEditingStudent] = useState(null);
             const [searchTerm, setSearchTerm] = useState("");
             const [activeSemesterInput, setActiveSemesterInput] = useState(1);
@@ -171,6 +254,10 @@
             const [rejectSearch, setRejectSearch] = useState(""); const [rejectReason, setRejectReason] = useState("");
             const [selectedRejectStudent, setSelectedRejectStudent] = useState(null);
             const [currentGrades, setCurrentGrades] = useState({});
+
+            // State Analisis Tren
+            const [trendSearch, setTrendSearch] = useState("");
+            const [trendFilter, setTrendFilter] = useState("ALL");
 
             const [importStage, setImportStage] = useState('upload'); 
             const [previewData, setPreviewData] = useState([]); 
@@ -258,7 +345,6 @@
             const handleUpdateSubjectOrder = async (subject, newVal) => { const val = parseInt(newVal); if (!isNaN(val) && subject.order !== val) await dbSaveSubject({ ...subject, order: val }); };
             const getSubjectsByLevel = (level) => subjects.filter(s => s.levels.includes(level)).sort((a, b) => (a.order || 99) - (b.order || 99));
 
-            // --- BULK DELETE LOGIC FOR SUBJECTS ---
             const dbDeleteSubjectFromLevel = async (subjectId, level) => {
                 const subject = subjects.find(s => s.id === subjectId);
                 if (!subject) return;
@@ -289,7 +375,7 @@
             };
             
             // =========================================================================
-            // CORE CALCULATION ENGINE - 100% ACCURATE & CENTRALIZED
+            // CORE CALCULATION ENGINE - TREND RATA-RATA GLOBAL
             // =========================================================================
             const processedStudents = useMemo(() => {
                 return students.map(student => {
@@ -302,32 +388,83 @@
                         let semCount = 0;
                         getSubjectsByLevel(sem.level).forEach(sub => {
                             const val = parseInt(student.grades?.[sem.id]?.[sub.id], 10) || 0;
-                            if (val > 0) { // HANYA hitung mapel yang terisi
+                            if (val > 0) {
                                 semTotal += val;
                                 semCount++;
                                 grandTotal += val;
                                 grandCount++;
                             }
                         });
-                        sems[sem.id] = {
-                            total: semTotal,
-                            avg: semCount > 0 ? (semTotal / semCount).toFixed(2) : "-"
-                        };
+                        sems[sem.id] = { total: semTotal, avg: semCount > 0 ? (semTotal / semCount).toFixed(2) : "-" };
                     });
 
-                    return {
-                        ...student,
-                        stats: {
-                            sems,
-                            grandTotal,
-                            grandAvg: grandCount > 0 ? (grandTotal / grandCount).toFixed(2) : "0.00"
+                    // Trend Global
+                    let trend = "BELUM LENGKAP";
+                    const semsArr = [sems[1].avg, sems[2].avg, sems[3].avg, sems[4].avg, sems[5].avg];
+                    const validAvgs = [];
+                    semsArr.forEach((avg, idx) => { if (avg !== "-") validAvgs.push({ sem: idx + 1, val: parseFloat(avg) }); });
+                    
+                    if (validAvgs.length >= 2) {
+                        let naik = true; let turun = true; let same = true;
+                        for (let i = 1; i < validAvgs.length; i++) {
+                            if (validAvgs[i].val < validAvgs[i-1].val) naik = false;
+                            if (validAvgs[i].val > validAvgs[i-1].val) turun = false;
+                            if (validAvgs[i].val !== validAvgs[i-1].val) same = false;
                         }
-                    };
+                        if (same) trend = "STAGNAN";
+                        else if (naik) trend = "NAIK";
+                        else if (turun) trend = "TURUN";
+                        else trend = "FLUKTUATIF";
+                    }
+
+                    return { ...student, stats: { sems, grandTotal, grandAvg: grandCount > 0 ? (grandTotal / grandCount).toFixed(2) : "0.00", trend } };
                 });
             }, [students, subjects]);
 
+            // =========================================================================
+            // CORE CALCULATION ENGINE - TREND SPESIFIK PER MATA PELAJARAN (UNTUK MODAL)
+            // =========================================================================
+            const subjectAnalysisData = useMemo(() => {
+                if (!selectedGraphStudent) return [];
+                const subjectMap = {};
+                
+                [1,2,3,4,5].forEach(sem => {
+                    const semGrades = selectedGraphStudent.grades?.[sem] || {};
+                    Object.keys(semGrades).forEach(subId => {
+                        const val = parseInt(semGrades[subId]) || 0;
+                        if (val > 0) {
+                            const subDef = subjects.find(s => s.id === subId);
+                            if (subDef) {
+                                const name = subDef.name.toUpperCase();
+                                if (!subjectMap[name]) subjectMap[name] = { 1: "-", 2: "-", 3: "-", 4: "-", 5: "-" };
+                                subjectMap[name][sem] = val;
+                            }
+                        }
+                    });
+                });
+
+                return Object.keys(subjectMap).map(name => {
+                    const sems = subjectMap[name];
+                    const validVals = [sems[1], sems[2], sems[3], sems[4], sems[5]].filter(v => v !== "-").map(Number);
+                    
+                    let trend = "BELUM LENGKAP";
+                    if (validVals.length >= 2) {
+                        let naik = true; let turun = true; let same = true;
+                        for (let i = 1; i < validVals.length; i++) {
+                            if (validVals[i] < validVals[i-1]) naik = false;
+                            if (validVals[i] > validVals[i-1]) turun = false;
+                            if (validVals[i] !== validVals[i-1]) same = false;
+                        }
+                        if (same) trend = "STAGNAN";
+                        else if (naik) trend = "NAIK";
+                        else if (turun) trend = "TURUN";
+                        else trend = "FLUKTUATIF";
+                    }
+                    return { name, sems, trend };
+                }).sort((a, b) => a.name.localeCompare(b.name));
+            }, [selectedGraphStudent, subjects]);
+
             const uniqueClasses = useMemo(() => [...new Set(processedStudents.map(s => s.class).filter(Boolean).map(c => c.trim().toUpperCase()))].sort(), [processedStudents]);
-            
             const getProcessedRankings = (filterClass) => {
                 let filteredList = filterClass !== 'ALL' ? processedStudents.filter(s => s.class && s.class.trim().toUpperCase() === filterClass) : [...processedStudents];
                 filteredList.sort((a, b) => b.stats.grandTotal - a.stats.grandTotal || parseFloat(b.stats.grandAvg) - parseFloat(a.stats.grandAvg));
@@ -335,13 +472,18 @@
             };
             const rankedStudentsGlobal = useMemo(() => getProcessedRankings('ALL'), [processedStudents]);
 
+            const openGraphModal = (student) => {
+                setSelectedGraphStudent(student);
+                setSelectedGraphSubject('AVERAGE');
+                setIsGraphModalOpen(true);
+            };
+
             const handleSaveStudent = async (e) => {
                 e.preventDefault(); const fd = new FormData(e.target);
                 await dbSaveStudent({ id: editingStudent ? editingStudent.id : Date.now(), name: fd.get('name'), nis: fd.get('nis'), nisn: fd.get('nisn'), class: fd.get('class'), grades: currentGrades });
                 setIsModalOpen(false);
             };
 
-            // --- BULK DELETE LOGIC FOR STUDENTS ---
             const handleSelectStudent = (id) => { setSelectedStudents(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]); };
             const handleSelectAllStudents = (e, list) => { if(e.target.checked) setSelectedStudents(list.map(s => s.id)); else setSelectedStudents([]); };
             const handleBulkDelete = async () => {
@@ -351,7 +493,6 @@
                     catch (error) { alert(error.message); } finally { setLoading(false); }
                 }
             };
-
             const handleDeleteAllData = async () => {
                 const confirm1 = confirm("PERINGATAN BAHAYA!\n\nApakah Anda benar-benar yakin ingin MENGHAPUS SEMUA DATA SISWA DAN NILAI dari sistem?\nTindakan ini bersifat permanen dan tidak bisa dikembalikan.");
                 if (confirm1) {
@@ -476,9 +617,6 @@
                 XLSX.writeFile(wb, `PERINGKAT_${filterName.replace(/ /g, '_')}_SI_ELI.xlsx`);
             };
 
-            // =========================================================================
-            // REKAP MASTER EXPORT: 1 ROW PER STUDENT (1D FORMAT), NO MERGED CELLS
-            // =========================================================================
             const handleExportFullData = () => {
                 if (students.length === 0) return alert("Tidak ada data untuk diekspor.");
                 
@@ -591,10 +729,74 @@
                                                 {[1,2,3,4,5].map(semId => (<td key={semId} className="text-center font-mono text-xs text-slate-500">{s.stats.sems[semId].avg}</td>))}
                                                 <td className="text-center font-mono font-bold text-slate-600 bg-slate-50/50">{s.stats.grandAvg}</td>
                                                 <td className="text-right font-extrabold text-indigo-600 font-mono text-base">{s.stats.grandTotal}</td>
-                                                <td className="text-right"><button onClick={()=>{setEditingStudent(s); setIsModalOpen(true);}} className="text-indigo-500 font-extrabold hover:text-indigo-700 text-sm tracking-wide">EDIT</button></td>
+                                                <td className="text-right space-x-3 whitespace-nowrap">
+                                                    <button type="button" onClick={()=>openGraphModal(s)} className="text-emerald-500 hover:text-emerald-700 transition-colors" title="Lihat Grafik Nilai"><LineChart size={18}/></button>
+                                                    <button type="button" onClick={()=>{setEditingStudent(s); setIsModalOpen(true);}} className="text-indigo-500 font-extrabold hover:text-indigo-700 text-sm tracking-wide">EDIT</button>
+                                                </td>
                                             </tr>
                                         ))}
                                         {filteredStudents.length===0 && <tr><td colSpan="10" className="p-12 text-center text-slate-400 italic">Belum ada data siswa. Silakan tambah data atau Import.</td></tr>}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                );
+            };
+
+            const renderAnalysis = () => {
+                const upCount = processedStudents.filter(s => s.stats.trend === 'NAIK').length;
+                const downCount = processedStudents.filter(s => s.stats.trend === 'TURUN').length;
+                const flukCount = processedStudents.filter(s => s.stats.trend === 'FLUKTUATIF').length;
+
+                let filtered = processedStudents;
+                if (trendFilter !== "ALL") filtered = filtered.filter(s => s.stats.trend === trendFilter);
+                if (trendSearch) filtered = filtered.filter(s => s.name.toLowerCase().includes(trendSearch.toLowerCase()) || s.nis.includes(trendSearch));
+
+                return (
+                    <div className="space-y-6 animate-fade-in">
+                        <div>
+                            <h2 className="text-3xl font-extrabold text-slate-800 tracking-tight flex items-center gap-2"><TrendingUp className="text-indigo-600"/> Analisis Tren Nilai</h2>
+                            <p className="text-slate-500 mt-1">Lacak konsistensi kenaikan/penurunan rata-rata siswa secara otomatis.</p>
+                        </div>
+                        
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            <Card title="Konsisten Naik" value={upCount} icon={<TrendingUp size={36}/>} gradient="bg-gradient-to-br from-emerald-400 to-teal-500" />
+                            <Card title="Konsisten Turun" value={downCount} icon={<TrendingDown size={36}/>} gradient="bg-gradient-to-br from-red-400 to-rose-500" />
+                            <Card title="Fluktuatif / Berubah-ubah" value={flukCount} icon={<Activity size={36}/>} gradient="bg-gradient-to-br from-indigo-400 to-blue-500" />
+                        </div>
+
+                        <div className="glass-card rounded-[2rem] p-8">
+                            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+                                <div className="relative w-full md:w-80">
+                                    <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-slate-400" size={18} />
+                                    <input type="text" placeholder="Cari Nama / NIS..." className="pl-12 pr-4 py-3 bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-indigo-500 focus:bg-white w-full text-sm font-semibold transition-all shadow-inner" value={trendSearch} onChange={(e) => setTrendSearch(e.target.value)}/>
+                                </div>
+                                <select value={trendFilter} onChange={(e) => setTrendFilter(e.target.value)} className="px-5 py-3 bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-indigo-500 font-bold text-slate-700 text-sm shadow-sm cursor-pointer w-full md:w-auto">
+                                    <option value="ALL">Semua Tren (ALL)</option>
+                                    <option value="NAIK">Konsisten NAIK</option>
+                                    <option value="TURUN">Konsisten TURUN</option>
+                                    <option value="FLUKTUATIF">FLUKTUATIF</option>
+                                    <option value="STAGNAN">STAGNAN</option>
+                                    <option value="BELUM LENGKAP">Data Belum Lengkap</option>
+                                </select>
+                            </div>
+
+                            <div className="overflow-x-auto rounded-2xl border border-slate-100">
+                                <table className="modern-table">
+                                    <thead><tr><th>Identitas Siswa</th><th className="text-center">Histori (S1 &rarr; S5)</th><th className="text-center">Kesimpulan Tren</th><th className="text-right">Analisis Penuh</th></tr></thead>
+                                    <tbody>
+                                        {filtered.map(s => (
+                                            <tr key={s.id}>
+                                                <td><div className="font-bold text-slate-800 text-base">{s.name}</div><div className="text-xs font-mono text-slate-400 mt-0.5">{s.nis} • Kelas {s.class}</div></td>
+                                                <td className="text-center text-[11px] font-mono font-bold text-slate-500">
+                                                    {s.stats.sems[1].avg} &rarr; {s.stats.sems[2].avg} &rarr; {s.stats.sems[3].avg} &rarr; {s.stats.sems[4].avg} &rarr; {s.stats.sems[5].avg}
+                                                </td>
+                                                <td className="text-center"><span className={`px-3 py-1.5 rounded-lg text-[11px] font-extrabold tracking-widest ${getBadgeClass(s.stats.trend)}`}>{s.stats.trend}</span></td>
+                                                <td className="text-right"><button onClick={()=>openGraphModal(s)} className="bg-indigo-50 text-indigo-600 px-4 py-2 rounded-xl text-sm font-bold hover:bg-indigo-600 hover:text-white transition-all shadow-sm flex items-center justify-center gap-2 ml-auto"><LineChart size={16}/> Lihat Grafik & Mapel</button></td>
+                                            </tr>
+                                        ))}
+                                        {filtered.length === 0 && <tr><td colSpan="4" className="p-12 text-center text-slate-400 italic">Tidak ada siswa dengan kriteria trend tersebut.</td></tr>}
                                     </tbody>
                                 </table>
                             </div>
@@ -855,6 +1057,7 @@
                             {[
                                 { id: 'dashboard', label: 'Dasbor Utama', icon: BarChart3 },
                                 { id: 'input', label: 'Data Siswa', icon: FileSpreadsheet },
+                                { id: 'analysis', label: 'Analisis Tren', icon: TrendingUp },
                                 { id: 'rankings', label: 'Peringkat', icon: Trophy },
                                 { id: 'eligible', label: 'Siswa Eligible', icon: Award },
                                 { id: 'rejected', label: 'Tolak Eligible', icon: UserMinus },
@@ -893,7 +1096,7 @@
                         {/* Dropdown Menu Mobile */}
                         {isMobileMenuOpen && (
                             <div className="md:hidden bg-[#0f172a] border-b border-slate-800 px-4 py-4 shadow-2xl absolute w-full z-20 flex flex-col gap-2 top-[76px]">
-                                {[{ id: 'dashboard', label: 'Dasbor Utama', icon: BarChart3 }, { id: 'input', label: 'Data Siswa', icon: FileSpreadsheet }, { id: 'rankings', label: 'Peringkat', icon: Trophy }, { id: 'eligible', label: 'Siswa Eligible', icon: Award }, { id: 'rejected', label: 'Tolak Eligible', icon: UserMinus }, { id: 'management', label: 'Import & Manajemen', icon: Database }].map(item => {
+                                {[{ id: 'dashboard', label: 'Dasbor Utama', icon: BarChart3 }, { id: 'input', label: 'Data Siswa', icon: FileSpreadsheet }, { id: 'analysis', label: 'Analisis Tren', icon: TrendingUp }, { id: 'rankings', label: 'Peringkat', icon: Trophy }, { id: 'eligible', label: 'Siswa Eligible', icon: Award }, { id: 'rejected', label: 'Tolak Eligible', icon: UserMinus }, { id: 'management', label: 'Import & Manajemen', icon: Database }].map(item => {
                                     const Icon = item.icon; const isActive = view === item.id;
                                     return (
                                         <button key={item.id} onClick={() => { setView(item.id); setIsMobileMenuOpen(false); }} className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-xl text-sm font-bold transition-all ${isActive ? 'bg-indigo-600 text-white' : 'text-slate-300 hover:bg-slate-800'}`}>
@@ -909,6 +1112,7 @@
                             <div className="flex-1">
                                 {view === 'dashboard' && renderDashboard()}
                                 {view === 'input' && renderDataInput()}
+                                {view === 'analysis' && renderAnalysis()}
                                 {view === 'rankings' && renderRankings()}
                                 {view === 'eligible' && renderEligible()}
                                 {view === 'rejected' && renderRejectedMenu()}
@@ -923,6 +1127,103 @@
                             </div>
                         </div>
                     </div>
+
+                    {/* MODAL GRAFIK & ANALISIS MAPEL */}
+                    <Modal isOpen={isGraphModalOpen} onClose={()=>setIsGraphModalOpen(false)} title="Grafik & Analisis Nilai">
+                        {selectedGraphStudent && (
+                            <div className="space-y-6">
+                                {/* Header Data Siswa */}
+                                <div className="flex flex-col md:flex-row justify-between items-center bg-slate-50 p-5 rounded-2xl border border-slate-100 gap-4">
+                                    <div className="text-center md:text-left">
+                                        <h4 className="font-extrabold text-slate-800 text-lg">{selectedGraphStudent.name}</h4>
+                                        <p className="text-sm font-mono text-slate-500 mt-1">{selectedGraphStudent.nis} • Kelas {selectedGraphStudent.class}</p>
+                                    </div>
+                                    <div className="text-center">
+                                        <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Kesimpulan Rata-Rata Global</div>
+                                        <span className={`px-4 py-2 rounded-xl text-sm font-extrabold tracking-widest shadow-sm inline-block ${getBadgeClass(selectedGraphStudent.stats.trend)}`}>
+                                            TREN: {selectedGraphStudent.stats.trend}
+                                        </span>
+                                    </div>
+                                </div>
+                                
+                                {/* Area Grafik Dinamis */}
+                                <div className="p-4 md:p-6 bg-white border border-slate-100 rounded-[2rem] shadow-sm">
+                                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+                                        <h4 className="font-extrabold text-slate-700 flex items-center gap-2"><LineChart size={18} className="text-indigo-600"/> Tampilan Grafik</h4>
+                                        <select value={selectedGraphSubject} onChange={(e)=>setSelectedGraphSubject(e.target.value)} className="bg-slate-50 border border-slate-200 text-sm font-bold text-indigo-700 py-2.5 px-4 rounded-xl focus:ring-2 focus:ring-indigo-500 shadow-inner w-full md:w-auto cursor-pointer">
+                                            <option value="AVERAGE">Grafik Rata-rata Keseluruhan</option>
+                                            {subjectAnalysisData.map(s => <option key={s.name} value={s.name}>Mapel: {s.name}</option>)}
+                                        </select>
+                                    </div>
+                                    
+                                    <ChartComponent student={selectedGraphStudent} graphMode={selectedGraphSubject} subjectAnalysis={subjectAnalysisData} />
+                                </div>
+                                
+                                {/* Angka Semester Dinamis (Menyesuaikan Grafik) */}
+                                <div className="grid grid-cols-5 gap-2 md:gap-4 text-center">
+                                    {[1,2,3,4,5].map(sem => {
+                                        let displayVal = "-";
+                                        if (selectedGraphSubject === 'AVERAGE') {
+                                            displayVal = selectedGraphStudent.stats.sems[sem].avg;
+                                        } else {
+                                            const sub = subjectAnalysisData.find(s => s.name === selectedGraphSubject);
+                                            if (sub) displayVal = sub.sems[sem];
+                                        }
+                                        return (
+                                            <div key={sem} className="bg-slate-50 p-3 rounded-2xl border border-slate-100 shadow-sm transition-all">
+                                                <div className="text-[10px] md:text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Sem {sem}</div>
+                                                <div className="font-extrabold text-indigo-600 text-sm md:text-xl">{displayVal}</div>
+                                            </div>
+                                        )
+                                    })}
+                                </div>
+
+                                {/* Analisis Detail Per Mata Pelajaran (Tabel Bawah) */}
+                                <div className="mt-8 border-t border-slate-100 pt-8">
+                                    <div className="flex justify-between items-end mb-4">
+                                        <div>
+                                            <h4 className="font-extrabold text-slate-800 text-lg flex items-center gap-2"><BookOpen className="text-indigo-600"/> Rincian Tren Per-Mapel</h4>
+                                            <p className="text-xs text-slate-500 mt-1">Klik baris di bawah ini untuk melihat garis grafiknya di atas.</p>
+                                        </div>
+                                    </div>
+                                    <div className="overflow-x-auto rounded-2xl border border-slate-100 shadow-inner bg-white">
+                                        <table className="modern-table text-sm">
+                                            <thead className="bg-slate-50">
+                                                <tr>
+                                                    <th>Mata Pelajaran</th>
+                                                    <th className="text-center">S1</th>
+                                                    <th className="text-center">S2</th>
+                                                    <th className="text-center">S3</th>
+                                                    <th className="text-center">S4</th>
+                                                    <th className="text-center">S5</th>
+                                                    <th className="text-center">Tren Nilai</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {subjectAnalysisData.map((item, idx) => (
+                                                    <tr key={idx} onClick={() => setSelectedGraphSubject(item.name)} className={`cursor-pointer transition-colors ${selectedGraphSubject === item.name ? 'bg-indigo-50/70 border-l-4 border-l-indigo-500' : 'hover:bg-slate-50'}`}>
+                                                        <td className="font-bold text-slate-700">{item.name}</td>
+                                                        {[1,2,3,4,5].map(sem => (
+                                                            <td key={sem} className={`text-center font-mono ${item.sems[sem] === "-" ? 'text-slate-300' : 'text-slate-600 font-bold'}`}>
+                                                                {item.sems[sem]}
+                                                            </td>
+                                                        ))}
+                                                        <td className="text-center">
+                                                            <span className={`px-2 py-1 rounded-md text-[10px] font-extrabold tracking-widest ${getBadgeClass(item.trend)}`}>{item.trend}</span>
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                                {subjectAnalysisData.length === 0 && (
+                                                    <tr><td colSpan="7" className="p-8 text-center text-slate-400 italic">Siswa ini belum memiliki nilai mata pelajaran yang terisi.</td></tr>
+                                                )}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+
+                            </div>
+                        )}
+                    </Modal>
                     
                     {/* Modal Input Siswa */}
                     <Modal isOpen={isModalOpen} onClose={()=>setIsModalOpen(false)} title="Formulir Data Siswa">
