@@ -3,175 +3,126 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistem Tabulasi & Peringkat Rapor (STAR)</title>
+    <title>SI ELI - Aplikasi Eligible Siswa</title>
     
-    <!-- React & ReactDOM -->
-    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
-    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <style>
+        #system-error-log { display: none; background: #fee2e2; color: #991b1b; padding: 20px; font-family: monospace; border-bottom: 2px solid #ef4444; z-index: 9999; position: relative; }
+    </style>
+    <script>
+        window.onerror = function(msg, url, lineNo) {
+            var log = document.getElementById('system-error-log');
+            if (log) { log.style.display = 'block'; log.innerHTML += '<p><strong>[ERROR]</strong> ' + msg + ' (Baris ' + lineNo + ')</p>'; }
+            return false; 
+        };
+    </script>
     
-    <!-- Babel for JSX -->
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <!-- React & Babel -->
+    <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+    <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.22.20/babel.min.js"></script>
     
-    <!-- Tailwind CSS -->
+    <!-- Tailwind CSS & SheetJS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    
-    <!-- SheetJS (XLSX) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     
     <!-- Lucide Icons -->
-    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://unpkg.com/lucide@0.260.0/dist/umd/lucide.min.js"></script>
     
     <!-- Google Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 
-    <!-- Firebase SDK (Versi Modular - Bridge to Global) -->
+    <!-- Firebase SDK -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, collection, doc, setDoc, deleteDoc, onSnapshot, query, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // Expose functions to global scope so React (Babel) can use them
         window.firebaseModules = { 
-            initializeApp, 
-            getAuth, 
-            signInAnonymously, 
-            onAuthStateChanged, 
-            signInWithCustomToken, 
-            getFirestore, 
-            collection, 
-            doc, 
-            setDoc, 
-            deleteDoc, 
-            onSnapshot, 
-            query, 
-            getDoc 
+            initializeApp, getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken, 
+            getFirestore, collection, doc, setDoc, deleteDoc, onSnapshot, query, getDoc 
         };
     </script>
 
     <style>
-        body { font-family: 'Inter', sans-serif; background-color: #f3f4f6; }
-        .glass-panel { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); }
-        ::-webkit-scrollbar { width: 8px; height: 8px; }
-        ::-webkit-scrollbar-track { background: #f1f1f1; }
-        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #f0f4f8; }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
         ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
         
-        /* Custom Table Styles */
-        .spreadsheet-table { border-collapse: collapse; width: 100%; font-size: 12px; }
-        .spreadsheet-table th, .spreadsheet-table td { border: 1px solid #e2e8f0; padding: 6px 10px; }
-        .spreadsheet-table th { background-color: #f8fafc; font-weight: 600; text-align: left; position: sticky; top: 0; }
-        .spreadsheet-table tr.existing { background-color: #f0fdf4; } /* Green tint */
-        .spreadsheet-table tr.new { background-color: #eff6ff; } /* Blue tint */
-        .spreadsheet-table tr.invalid { background-color: #fef2f2; } /* Red tint */
+        /* Modern Table Styles */
+        .modern-table { width: 100%; border-collapse: separate; border-spacing: 0; }
+        .modern-table th { background-color: rgba(248, 250, 252, 0.8); backdrop-filter: blur(4px); color: #64748b; font-weight: 700; text-transform: uppercase; font-size: 0.7rem; letter-spacing: 0.05em; padding: 14px 16px; border-bottom: 1px solid #e2e8f0; }
+        .modern-table td { padding: 14px 16px; border-bottom: 1px solid #f1f5f9; color: #334155; font-size: 0.875rem; }
+        .modern-table tbody tr { transition: all 0.2s ease; }
+        .modern-table tbody tr:hover { background-color: #f8fafc; transform: translateY(-1px); box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); position: relative; z-index: 10; border-radius: 8px; }
         
-        /* Animations */
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        .animate-fade-in { animation: fadeIn 0.3s ease-out forwards; }
+        .animate-fade-in { animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
+        
+        .glass-card { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.2); box-shadow: 0 10px 40px -10px rgba(0,0,0,0.05); }
     </style>
 </head>
 <body>
+    <div id="system-error-log"></div>
     <div id="root"></div>
 
     <script type="text/babel">
-        const { useState, useEffect, useMemo, useRef } = React;
+        const { useState, useEffect, useMemo, useRef, Component } = React;
+
+        class ErrorBoundary extends Component {
+            constructor(props) { super(props); this.state = { hasError: false, error: null }; }
+            static getDerivedStateFromError(error) { return { hasError: true, error }; }
+            render() {
+                if (this.state.hasError) return (
+                    <div className="min-h-screen flex items-center justify-center bg-red-50 p-4">
+                        <div className="bg-white p-6 rounded-2xl shadow-xl max-w-2xl w-full">
+                            <h1 className="text-xl font-bold text-red-600 mb-2">Terjadi Kesalahan Aplikasi</h1>
+                            <div className="bg-slate-900 text-green-400 p-4 rounded-xl text-xs font-mono overflow-auto max-h-64 mb-4">{this.state.error?.toString()}</div>
+                            <button onClick={() => window.location.reload()} className="bg-red-600 text-white px-5 py-2.5 rounded-xl font-bold hover:bg-red-700 transition-all">Muat Ulang Halaman</button>
+                        </div>
+                    </div>
+                );
+                return this.props.children;
+            }
+        }
 
         // --- ICON HELPER ---
         const createIcon = (iconName) => ({ size = 24, className = "", ...props }) => {
-            // Wait for Lucide to load
-            if (!window.lucide) return <span className="text-xs">...</span>;
-            
-            const iconData = window.lucide.icons[iconName];
-            if (!iconData) return null;
-            
-            return (
-                <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...props}>
-                    {iconData.map((child, index) => {
-                        const [tag, attrs] = child;
-                        return React.createElement(tag, { ...attrs, key: index });
-                    })}
-                </svg>
-            );
+            if (!window.lucide || !window.lucide[iconName]) return <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-slate-100 text-slate-400">{iconName}</span>;
+            const iconNode = window.lucide[iconName];
+            if (Array.isArray(iconNode) && iconNode[0] === 'svg') {
+                const attrs = iconNode[1] || {}; const children = iconNode[2] || [];
+                return React.createElement('svg', { ...attrs, width: size, height: size, className: className, ...props }, children.map((child, i) => React.createElement(child[0], { ...child[1], key: i })));
+            }
+            return <span className="text-[10px]">{iconName}</span>;
         };
 
-        // Icons
-        const Trophy = createIcon('Trophy');
-        const Users = createIcon('Users');
-        const BarChart3 = createIcon('BarChart3');
-        const Plus = createIcon('Plus');
-        const Search = createIcon('Search');
-        const Trash2 = createIcon('Trash2');
-        const Save = createIcon('Save');
-        const FileSpreadsheet = createIcon('FileSpreadsheet');
-        const ChevronRight = createIcon('ChevronRight');
-        const X = createIcon('X');
-        const BookOpen = createIcon('BookOpen');
-        const Settings = createIcon('Settings');
-        const ClipboardPaste = createIcon('ClipboardPaste');
-        const ArrowDown = createIcon('ArrowDown');
-        const FileUp = createIcon('FileUp');
-        const AlertCircle = createIcon('AlertCircle');
-        const Download = createIcon('Download');
-        const CheckCircle = createIcon('CheckCircle');
-        const UploadCloud = createIcon('UploadCloud');
-        const UserPlus = createIcon('UserPlus');
-        const FileDown = createIcon('FileDown');
-        const Award = createIcon('Award'); 
-        const HeartHandshake = createIcon('HeartHandshake');
-        const Cloud = createIcon('Cloud');
-        const WifiOff = createIcon('WifiOff');
-        const Filter = createIcon('Filter');
-        const UserMinus = createIcon('UserMinus'); 
-        const UserCheck = createIcon('UserCheck');
+        const Trophy = createIcon('Trophy'); const Users = createIcon('Users'); const BarChart3 = createIcon('BarChart3');
+        const Plus = createIcon('Plus'); const Search = createIcon('Search'); const Trash2 = createIcon('Trash2');
+        const Save = createIcon('Save'); const FileSpreadsheet = createIcon('FileSpreadsheet'); const X = createIcon('X'); 
+        const BookOpen = createIcon('BookOpen'); const ClipboardPaste = createIcon('ClipboardPaste'); const FileUp = createIcon('FileUp');
+        const AlertTriangle = createIcon('AlertTriangle'); const Download = createIcon('Download'); const CheckCircle = createIcon('CheckCircle');
+        const UploadCloud = createIcon('UploadCloud'); const FileDown = createIcon('FileDown');
+        const Award = createIcon('Award'); const Cloud = createIcon('Cloud');
+        const Filter = createIcon('Filter'); const UserMinus = createIcon('UserMinus'); 
+        const GraduationCap = createIcon('GraduationCap'); const Database = createIcon('Database'); const Trash = createIcon('Trash');
+        const Menu = createIcon('Menu');
 
-        // --- KONFIGURASI SEMESTER ---
         const SEMESTERS = [
-            { id: 1, label: 'Sem 1 (Kls 10)', level: 10 },
-            { id: 2, label: 'Sem 2 (Kls 10)', level: 10 },
-            { id: 3, label: 'Sem 3 (Kls 11)', level: 11 },
-            { id: 4, label: 'Sem 4 (Kls 11)', level: 11 },
+            { id: 1, label: 'Sem 1 (Kls 10)', level: 10 }, { id: 2, label: 'Sem 2 (Kls 10)', level: 10 },
+            { id: 3, label: 'Sem 3 (Kls 11)', level: 11 }, { id: 4, label: 'Sem 4 (Kls 11)', level: 11 },
             { id: 5, label: 'Sem 5 (Kls 12)', level: 12 },
         ];
 
-        // --- DATA DEFAULT ---
-        const DEFAULT_SUBJECTS = [
-            { id: 'ind', name: 'B. Indonesia', levels: [10, 11, 12], alias: ['BAHASA INDONESIA', 'B. INDO', 'INDONESIA'], order: 1 },
-            { id: 'ing', name: 'B. Inggris', levels: [10, 11, 12], alias: ['BAHASA INGGRIS', 'B. ING', 'INGGRIS'], order: 2 },
-            { id: 'mtk', name: 'Matematika', levels: [10, 11, 12], alias: ['MATEMATIKA', 'MATH'], order: 3 },
-            { id: 'fis', name: 'Fisika', levels: [10, 11, 12], alias: ['FISIKA'], order: 4 },
-            { id: 'kim', name: 'Kimia', levels: [10, 11, 12], alias: ['KIMIA'], order: 5 },
-            { id: 'bio', name: 'Biologi', levels: [10, 11, 12], alias: ['BIOLOGI'], order: 6 },
-            { id: 'eko', name: 'Ekonomi', levels: [10, 11, 12], alias: ['EKONOMI'], order: 7 },
-            { id: 'sej', name: 'Sejarah', levels: [10, 11, 12], alias: ['SEJARAH'], order: 8 }
-        ];
-
-        const INITIAL_STUDENTS = [
-            {
-                id: 1701,
-                name: "Andi Saputra",
-                nis: "2122001",
-                nisn: "0051234567",
-                class: "12 IPA 1",
-                grades: { 1: { mtk: 85 }, 2: { mtk: 87 }, 3: { mtk: 88 }, 4: { mtk: 90 }, 5: { mtk: 92 } }
-            },
-            {
-                id: 1702,
-                name: "Budi Santoso",
-                nis: "2122002",
-                nisn: "0057654321",
-                class: "12 IPA 2",
-                grades: { 1: { mtk: 75 }, 2: { mtk: 77 }, 3: { mtk: 78 }, 4: { mtk: 80 }, 5: { mtk: 82 } }
-            }
-        ];
-
-        // --- COMPONENTS ---
-        const Card = ({ title, value, icon, color }) => (
-            <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 flex items-center space-x-4">
-                <div className={`p-3 rounded-lg ${color} text-white`}>
+        const Card = ({ title, value, icon, gradient }) => (
+            <div className="glass-card p-6 rounded-3xl hover:-translate-y-1 transition-all duration-300 flex items-center space-x-5 group cursor-default">
+                <div className={`p-4 rounded-2xl ${gradient} text-white shadow-lg group-hover:scale-110 transition-transform duration-300`}>
                     {icon}
                 </div>
                 <div>
-                    <p className="text-sm text-slate-500 font-medium">{title}</p>
-                    <h3 className="text-2xl font-bold text-slate-800">{value}</h3>
+                    <p className="text-xs text-slate-500 font-bold mb-1 uppercase tracking-widest">{title}</p>
+                    <h3 className="text-4xl font-extrabold text-slate-800 tracking-tight drop-shadow-sm">{value}</h3>
                 </div>
             </div>
         );
@@ -179,15 +130,15 @@
         const Modal = ({ isOpen, onClose, title, children, maxWidth = "max-w-4xl" }) => {
             if (!isOpen) return null;
             return (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-                    <div className={`bg-white rounded-xl shadow-2xl w-full ${maxWidth} max-h-[90vh] overflow-y-auto flex flex-col animate-fade-in`}>
-                        <div className="flex justify-between items-center p-6 border-b sticky top-0 bg-white z-10 flex-shrink-0">
-                            <h2 className="text-xl font-bold text-slate-800">{title}</h2>
-                            <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-full">
+                <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in">
+                    <div className={`bg-white rounded-[2rem] shadow-2xl w-full ${maxWidth} max-h-[90vh] overflow-hidden flex flex-col`}>
+                        <div className="flex justify-between items-center p-8 border-b border-slate-100 bg-white/80 backdrop-blur-md z-10 flex-shrink-0">
+                            <h2 className="text-2xl font-extrabold text-slate-800 tracking-tight">{title}</h2>
+                            <button onClick={onClose} className="p-2 bg-slate-100 hover:bg-red-100 hover:text-red-600 rounded-full transition-colors text-slate-500">
                                 <X size={20} />
                             </button>
                         </div>
-                        <div className="p-6 flex-1 overflow-y-auto">
+                        <div className="p-8 flex-1 overflow-y-auto bg-slate-50/50">
                             {children}
                         </div>
                     </div>
@@ -196,134 +147,83 @@
         };
 
         const App = () => {
-            const [user, setUser] = useState(null);
-            const [db, setDb] = useState(null);
-            const [appId, setAppId] = useState(null);
-            const [isOnline, setIsOnline] = useState(false);
-            const [permissionError, setPermissionError] = useState(false);
+            const [user, setUser] = useState(null); const [db, setDb] = useState(null); const [appId, setAppId] = useState(null);
+            const [isOnline, setIsOnline] = useState(false); const [loading, setLoading] = useState(true);
 
             const [students, setStudents] = useState([]);
             const [subjects, setSubjects] = useState([]);
             const [rejectedStudents, setRejectedStudents] = useState([]);
-            const [loading, setLoading] = useState(true);
 
             const [view, setView] = useState('dashboard'); 
+            const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+            
             const [isModalOpen, setIsModalOpen] = useState(false);
             const [isSubjectModalOpen, setIsSubjectModalOpen] = useState(false);
-            const [isImportModalOpen, setIsImportModalOpen] = useState(false); 
             const [editingStudent, setEditingStudent] = useState(null);
             const [searchTerm, setSearchTerm] = useState("");
             const [activeSemesterInput, setActiveSemesterInput] = useState(1);
             const [pasteMode, setPasteMode] = useState(false);
             const [importSemester, setImportSemester] = useState(1); 
-            const [eligibleQuota, setEligibleQuota] = useState(10);
+            const [eligibleQuota, setEligibleQuota] = useState(25);
             
             const [rankFilter, setRankFilter] = useState('ALL');
             const [eligibleFilter, setEligibleFilter] = useState('ALL');
-
-            const [rejectSearch, setRejectSearch] = useState("");
-            const [rejectReason, setRejectReason] = useState("");
+            const [rejectSearch, setRejectSearch] = useState(""); const [rejectReason, setRejectReason] = useState("");
             const [selectedRejectStudent, setSelectedRejectStudent] = useState(null);
-            const [isSavingRejection, setIsSavingRejection] = useState(false);
-
             const [currentGrades, setCurrentGrades] = useState({});
 
             const [importStage, setImportStage] = useState('upload'); 
             const [previewData, setPreviewData] = useState([]); 
-            const [importStats, setImportStats] = useState({ updated: 0, new: 0, invalid: 0 });
+            const [importStats, setImportStats] = useState({ updated: 0, new: 0 });
             
             const [newSubjectName, setNewSubjectName] = useState("");
             const [activeLevelTab, setActiveLevelTab] = useState(10); 
+            
+            // Checkbox States
+            const [selectedStudents, setSelectedStudents] = useState([]);
+            const [selectedSubjects, setSelectedSubjects] = useState([]);
 
             useEffect(() => {
                 const initFirebase = async () => {
+                    let attempts = 0;
                     const checkModules = setInterval(async () => {
+                        attempts++;
                         if (window.firebaseModules) {
                             clearInterval(checkModules);
-                            const { initializeApp, getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken, getFirestore } = window.firebaseModules;
+                            const { initializeApp, getAuth, signInAnonymously, onAuthStateChanged, getFirestore } = window.firebaseModules;
                             try {
-                                const firebaseConfig = {
-                                    apiKey: "AIzaSyAN-g1GD_vFpO6sZAKyJ6WrZC0lTXQaxcc",
-                                    authDomain: "pdss-bk.firebaseapp.com",
-                                    projectId: "pdss-bk",
-                                    storageBucket: "pdss-bk.firebasestorage.app",
-                                    messagingSenderId: "755442420988",
-                                    appId: "1:755442420988:web:28a274042fc7b77a5a9b79"
-                                };
-                                
-                                const app = initializeApp(firebaseConfig);
-                                const auth = getAuth(app);
-                                const firestore = getFirestore(app);
-                                const currentAppId = 'pdss-bk-app'; 
-                                
-                                setDb(firestore); 
-                                setAppId(currentAppId);
-                                
-                                try {
-                                    if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) await signInWithCustomToken(auth, __initial_auth_token);
-                                    else {
-                                        // Fallback to anonymous if no token (standard for these demos)
-                                        await signInAnonymously(auth);
-                                    }
-                                } catch (authError) { 
-                                    console.warn("Auth fallback:", authError);
-                                    await signInAnonymously(auth); 
-                                }
-                                
+                                const firebaseConfig = { apiKey: "AIzaSyAN-g1GD_vFpO6sZAKyJ6WrZC0lTXQaxcc", authDomain: "pdss-bk.firebaseapp.com", projectId: "pdss-bk", storageBucket: "pdss-bk.firebasestorage.app", messagingSenderId: "755442420988", appId: "1:755442420988:web:28a274042fc7b77a5a9b79" };
+                                const app = initializeApp(firebaseConfig); const auth = getAuth(app); const firestore = getFirestore(app);
+                                setDb(firestore); setAppId('sieli-app-v2');
+                                try { await signInAnonymously(auth); } catch (e) { }
                                 onAuthStateChanged(auth, (u) => { setUser(u); setIsOnline(!!u); });
-                            } catch (error) { 
-                                console.error("Firebase Init Error:", error); 
-                                setLoading(false); 
-                            }
-                        }
+                            } catch (error) { setLoading(false); }
+                        } else if (attempts > 50) { clearInterval(checkModules); setLoading(false); }
                     }, 100);
                 };
                 initFirebase();
             }, []);
 
             useEffect(() => {
-                if (!user || !db || !appId) return;
-                const { collection, onSnapshot, doc, setDoc } = window.firebaseModules;
+                if (!user || !db || !appId || typeof window.firebaseModules === 'undefined') return;
+                const { collection, onSnapshot } = window.firebaseModules;
                 
-                // --- Subjects Sync ---
                 const subRef = collection(db, 'artifacts', appId, 'public', 'data', 'subjects_v1');
                 const unsubSub = onSnapshot(subRef, (snapshot) => {
                     const loadedSubjects = snapshot.docs.map(d => d.data());
-                    if (loadedSubjects.length === 0 && !snapshot.metadata.fromCache) {
-                        // Init defaults if empty
-                        DEFAULT_SUBJECTS.forEach(s => setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'subjects_v1', s.id), s));
-                    } else {
-                        // Sort by 'order' property when loading from DB
-                        loadedSubjects.sort((a, b) => (a.order || 99) - (b.order || 99));
-                        setSubjects(loadedSubjects);
-                    }
-                }, (error) => {
-                    if(error.code === 'permission-denied') setPermissionError(true);
-                    setLoading(false);
-                });
+                    loadedSubjects.sort((a, b) => (a.order || 99) - (b.order || 99)); 
+                    setSubjects(loadedSubjects);
+                }, () => setLoading(false));
 
-                // --- Students Sync ---
                 const stuRef = collection(db, 'artifacts', appId, 'public', 'data', 'students_v1');
                 const unsubStu = onSnapshot(stuRef, (snapshot) => {
                     const loadedStudents = snapshot.docs.map(d => d.data());
-                    if (loadedStudents.length === 0 && !snapshot.metadata.fromCache) {
-                        // Init defaults if empty
-                        INITIAL_STUDENTS.forEach(s => setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'students_v1', String(s.id)), s));
-                    } else setStudents(loadedStudents);
+                    setStudents(loadedStudents);
                     setLoading(false);
-                }, (error) => {
-                    if(error.code === 'permission-denied') setPermissionError(true);
-                    setLoading(false);
-                });
+                }, () => setLoading(false));
 
-                // --- Rejections Sync ---
                 const rejRef = collection(db, 'artifacts', appId, 'public', 'data', 'rejected_students_v1');
-                const unsubRej = onSnapshot(rejRef, (snapshot) => {
-                    const loadedRej = snapshot.docs.map(d => d.data());
-                    setRejectedStudents(loadedRej);
-                }, (error) => {
-                    if(error.code === 'permission-denied') setPermissionError(true);
-                });
+                const unsubRej = onSnapshot(rejRef, (snapshot) => { setRejectedStudents(snapshot.docs.map(d => d.data())); });
 
                 return () => { unsubSub(); unsubStu(); unsubRej(); };
             }, [user, db, appId]);
@@ -336,500 +236,317 @@
             }, [isModalOpen, editingStudent]);
 
             const updateCurrentGrades = (semId, subId, value) => {
-                setCurrentGrades(prev => {
-                    const semGrades = { ...(prev[semId] || {}) };
-                    semGrades[subId] = parseInt(value) || 0;
-                    return { ...prev, [semId]: semGrades };
-                });
+                setCurrentGrades(prev => { const semGrades = { ...(prev[semId] || {}) }; semGrades[subId] = parseInt(value) || 0; return { ...prev, [semId]: semGrades }; });
             };
 
-            const dbSaveStudent = async (studentData) => {
-                if(!db) return;
-                const { doc, setDoc } = window.firebaseModules;
-                await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'students_v1', String(studentData.id)), studentData);
-            };
-            const dbDeleteStudent = async (id) => {
-                if(!db) return;
-                const { doc, deleteDoc } = window.firebaseModules;
-                await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'students_v1', String(id)));
-            };
-            const dbSaveSubject = async (subjectData) => {
-                if(!db) return;
-                const { doc, setDoc } = window.firebaseModules;
-                await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'subjects_v1', subjectData.id), subjectData);
-            };
-            const dbDeleteSubject = async (id) => {
-                if(!db) return;
-                const { doc, deleteDoc } = window.firebaseModules;
-                await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'subjects_v1', id));
-            };
-            const dbSaveRejection = async (data) => {
-                if(!db) throw new Error("Database belum terhubung");
-                const { doc, setDoc } = window.firebaseModules;
-                await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'rejected_students_v1', String(data.studentId)), data);
-            };
-            const dbDeleteRejection = async (id) => {
-                if(!db) return;
-                const { doc, deleteDoc } = window.firebaseModules;
-                await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'rejected_students_v1', String(id)));
-            };
+            const dbSaveStudent = async (data) => { if(db) await window.firebaseModules.setDoc(window.firebaseModules.doc(db, 'artifacts', appId, 'public', 'data', 'students_v1', String(data.id)), data); };
+            const dbDeleteStudent = async (id) => { if(db) await window.firebaseModules.deleteDoc(window.firebaseModules.doc(db, 'artifacts', appId, 'public', 'data', 'students_v1', String(id))); };
+            const dbSaveSubject = async (data) => { if(db) await window.firebaseModules.setDoc(window.firebaseModules.doc(db, 'artifacts', appId, 'public', 'data', 'subjects_v1', data.id), data); };
+            const dbDeleteSubject = async (id) => { if(db) await window.firebaseModules.deleteDoc(window.firebaseModules.doc(db, 'artifacts', appId, 'public', 'data', 'subjects_v1', id)); };
+            const dbSaveRejection = async (data) => { if(db) await window.firebaseModules.setDoc(window.firebaseModules.doc(db, 'artifacts', appId, 'public', 'data', 'rejected_students_v1', String(data.studentId)), data); };
+            const dbDeleteRejection = async (id) => { if(db) await window.firebaseModules.deleteDoc(window.firebaseModules.doc(db, 'artifacts', appId, 'public', 'data', 'rejected_students_v1', String(id))); };
 
             const handleAddSubject = (e) => {
-                e.preventDefault();
-                if (!newSubjectName.trim()) return;
+                e.preventDefault(); if (!newSubjectName.trim()) return;
                 const id = newSubjectName.toLowerCase().replace(/[^a-z0-9]/g, '').substring(0, 10) + Date.now().toString().slice(-3);
                 const existing = subjects.find(s => s.name.toLowerCase() === newSubjectName.toLowerCase());
-                
-                // Determine new order (last + 1)
-                const maxOrder = subjects.reduce((max, s) => (s.order > max ? s.order : max), 0);
-                const nextOrder = maxOrder + 1;
-
-                if (existing) {
-                    if (!existing.levels.includes(activeLevelTab)) dbSaveSubject({ ...existing, levels: [...existing.levels, activeLevelTab] });
-                } else dbSaveSubject({ id, name: newSubjectName, levels: [activeLevelTab], order: nextOrder });
+                const nextOrder = subjects.reduce((max, s) => (s.order > max ? s.order : max), 0) + 1;
+                if (existing) { if (!existing.levels.includes(activeLevelTab)) dbSaveSubject({ ...existing, levels: [...existing.levels, activeLevelTab] }); }
+                else dbSaveSubject({ id, name: newSubjectName, levels: [activeLevelTab], order: nextOrder });
                 setNewSubjectName("");
             };
+            const handleUpdateSubjectOrder = async (subject, newVal) => { const val = parseInt(newVal); if (!isNaN(val) && subject.order !== val) await dbSaveSubject({ ...subject, order: val }); };
+            const getSubjectsByLevel = (level) => subjects.filter(s => s.levels.includes(level)).sort((a, b) => (a.order || 99) - (b.order || 99));
 
-            const handleUpdateSubjectOrder = async (subject, newVal) => {
-                const val = parseInt(newVal);
-                if (!isNaN(val) && subject.order !== val) {
-                    await dbSaveSubject({ ...subject, order: val });
+            // --- BULK DELETE LOGIC FOR SUBJECTS ---
+            const dbDeleteSubjectFromLevel = async (subjectId, level) => {
+                const subject = subjects.find(s => s.id === subjectId);
+                if (!subject) return;
+                const newLevels = subject.levels.filter(l => l !== level);
+                if (newLevels.length === 0) {
+                    await dbDeleteSubject(subjectId);
+                } else {
+                    await dbSaveSubject({ ...subject, levels: newLevels });
+                }
+            };
+            const handleDeleteSubjectFromLevel = async (id, level) => {
+                if(confirm("Hapus mapel ini dari kelas " + level + "?")) {
+                    setLoading(true);
+                    try { await dbDeleteSubjectFromLevel(id, level); }
+                    catch(e) { alert(e.message); } finally { setLoading(false); }
+                }
+            };
+            const handleSelectSubject = (id) => setSelectedSubjects(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+            const handleSelectAllSubjects = (e, list) => { if(e.target.checked) setSelectedSubjects(list.map(s => s.id)); else setSelectedSubjects([]); };
+            const handleBulkDeleteSubjects = async () => {
+                if(confirm(`Yakin ingin menghapus ${selectedSubjects.length} mapel terpilih dari Kelas ${activeLevelTab}?`)) {
+                    setLoading(true);
+                    try {
+                        for(const id of selectedSubjects) { await dbDeleteSubjectFromLevel(id, activeLevelTab); }
+                        setSelectedSubjects([]);
+                    } catch (e) { alert(e.message); } finally { setLoading(false); }
+                }
+            };
+            
+            // =========================================================================
+            // CORE CALCULATION ENGINE - 100% ACCURATE & CENTRALIZED
+            // =========================================================================
+            const processedStudents = useMemo(() => {
+                return students.map(student => {
+                    let grandTotal = 0;
+                    let grandCount = 0;
+                    const sems = {};
+
+                    SEMESTERS.forEach(sem => {
+                        let semTotal = 0;
+                        let semCount = 0;
+                        getSubjectsByLevel(sem.level).forEach(sub => {
+                            const val = parseInt(student.grades?.[sem.id]?.[sub.id], 10) || 0;
+                            if (val > 0) { // HANYA hitung mapel yang terisi
+                                semTotal += val;
+                                semCount++;
+                                grandTotal += val;
+                                grandCount++;
+                            }
+                        });
+                        sems[sem.id] = {
+                            total: semTotal,
+                            avg: semCount > 0 ? (semTotal / semCount).toFixed(2) : "-"
+                        };
+                    });
+
+                    return {
+                        ...student,
+                        stats: {
+                            sems,
+                            grandTotal,
+                            grandAvg: grandCount > 0 ? (grandTotal / grandCount).toFixed(2) : "0.00"
+                        }
+                    };
+                });
+            }, [students, subjects]);
+
+            const uniqueClasses = useMemo(() => [...new Set(processedStudents.map(s => s.class).filter(Boolean).map(c => c.trim().toUpperCase()))].sort(), [processedStudents]);
+            
+            const getProcessedRankings = (filterClass) => {
+                let filteredList = filterClass !== 'ALL' ? processedStudents.filter(s => s.class && s.class.trim().toUpperCase() === filterClass) : [...processedStudents];
+                filteredList.sort((a, b) => b.stats.grandTotal - a.stats.grandTotal || parseFloat(b.stats.grandAvg) - parseFloat(a.stats.grandAvg));
+                return filteredList.map((s, index) => ({ ...s, rank: index + 1 }));
+            };
+            const rankedStudentsGlobal = useMemo(() => getProcessedRankings('ALL'), [processedStudents]);
+
+            const handleSaveStudent = async (e) => {
+                e.preventDefault(); const fd = new FormData(e.target);
+                await dbSaveStudent({ id: editingStudent ? editingStudent.id : Date.now(), name: fd.get('name'), nis: fd.get('nis'), nisn: fd.get('nisn'), class: fd.get('class'), grades: currentGrades });
+                setIsModalOpen(false);
+            };
+
+            // --- BULK DELETE LOGIC FOR STUDENTS ---
+            const handleSelectStudent = (id) => { setSelectedStudents(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]); };
+            const handleSelectAllStudents = (e, list) => { if(e.target.checked) setSelectedStudents(list.map(s => s.id)); else setSelectedStudents([]); };
+            const handleBulkDelete = async () => {
+                if(confirm(`Yakin ingin menghapus permanen ${selectedStudents.length} data siswa terpilih?`)) {
+                    setLoading(true);
+                    try { for(const id of selectedStudents) await dbDeleteStudent(id); setSelectedStudents([]); }
+                    catch (error) { alert(error.message); } finally { setLoading(false); }
                 }
             };
 
+            const handleDeleteAllData = async () => {
+                const confirm1 = confirm("PERINGATAN BAHAYA!\n\nApakah Anda benar-benar yakin ingin MENGHAPUS SEMUA DATA SISWA DAN NILAI dari sistem?\nTindakan ini bersifat permanen dan tidak bisa dikembalikan.");
+                if (confirm1) {
+                    const code = prompt("Ketik 'HAPUS' (huruf besar) untuk konfirmasi penghapusan seluruh data:");
+                    if (code === 'HAPUS') {
+                        setLoading(true);
+                        try {
+                            for (const s of students) await dbDeleteStudent(s.id);
+                            for (const r of rejectedStudents) await dbDeleteRejection(r.studentId);
+                            alert("Seluruh data berhasil dihapus dengan bersih!");
+                        } catch (e) { alert("Terjadi kesalahan: " + e.message); } finally { setLoading(false); }
+                    } else if (code !== null) { alert("Kode salah. Penghapusan dibatalkan demi keamanan."); }
+                }
+            };
+
+            // --- IMPORT/EXPORT LOGICS ---
             const handleDownloadSubjectTemplate = () => {
                 const levelSubjects = getSubjectsByLevel(activeLevelTab);
                 const headers = ["ID_MAPEL (SYSTEM ONLY)", "NAMA_MAPEL", "URUTAN"];
-                // Prepare data: Existing subjects first
                 const data = levelSubjects.map(s => [s.id, s.name, s.order || ""]);
-                
-                // Explain usage in console or alert? No, file header is enough.
-                const ws = XLSX.utils.aoa_to_sheet([headers, ...data]);
-                
-                // Add column width for better visibility
-                ws['!cols'] = [{wch: 25}, {wch: 30}, {wch: 10}];
-
-                const wb = XLSX.utils.book_new();
-                XLSX.utils.book_append_sheet(wb, ws, `Mapel_Kls_${activeLevelTab}`);
+                const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([headers, ...data]), "Mapel");
                 XLSX.writeFile(wb, `TEMPLATE_MAPEL_KLS_${activeLevelTab}.xlsx`);
             };
 
             const handleSubjectFileUpload = (e) => {
-                const file = e.target.files[0];
-                if (!file) return;
+                const file = e.target.files[0]; if(!file) return;
                 const reader = new FileReader();
                 reader.onload = async (evt) => {
-                    const wb = XLSX.read(evt.target.result, {type:'binary'});
-                    const ws = wb.Sheets[wb.SheetNames[0]];
+                    const wb = XLSX.read(evt.target.result, {type:'binary'}); const ws = wb.Sheets[wb.SheetNames[0]];
                     const rows = XLSX.utils.sheet_to_json(ws, {header:1});
-                    
                     if (!rows || rows.length < 2) return alert("File kosong atau format salah.");
-                    
-                    // Headers expected: ID, NAMA, URUTAN (Index 0, 1, 2)
-                    let updatedCount = 0;
-                    let createdCount = 0;
-
                     for(let i=1; i<rows.length; i++) {
-                        const row = rows[i];
-                        if(!row || (!row[0] && !row[1])) continue; // Skip empty rows
+                        const row = rows[i]; if(!row || (!row[0] && !row[1])) continue; 
+                        const id = row[0] ? String(row[0]).trim() : null; const name = row[1] ? String(row[1]).trim() : null;
+                        const order = parseInt(row[2]) || 99; if (!name) continue;
 
-                        const id = row[0] ? String(row[0]).trim() : null;
-                        const name = row[1] ? String(row[1]).trim() : null;
-                        const order = parseInt(row[2]) || 99;
-
-                        if (!name) continue;
-
-                        let existingSub = null;
-                        if (id) existingSub = subjects.find(s => s.id === id);
-                        
-                        // Fallback: Try match by name if ID empty
-                        if (!existingSub) {
-                            existingSub = subjects.find(s => s.name.toLowerCase() === name.toLowerCase());
-                        }
-
+                        let existingSub = id ? subjects.find(s => s.id === id) : subjects.find(s => s.name.toLowerCase() === name.toLowerCase());
                         if (existingSub) {
-                            // Update Existing
-                            // Ensure current level is in the levels array
                             const newLevels = existingSub.levels.includes(activeLevelTab) ? existingSub.levels : [...existingSub.levels, activeLevelTab];
-                            
-                            // Only update if changes exist to save writes
-                            if(existingSub.name !== name || existingSub.order !== order || !existingSub.levels.includes(activeLevelTab)) {
-                                await dbSaveSubject({ ...existingSub, name: name, order: order, levels: newLevels });
-                                updatedCount++;
-                            }
+                            await dbSaveSubject({ ...existingSub, name: name, order: order, levels: newLevels });
                         } else {
-                            // Create New
                             const newId = name.toLowerCase().replace(/[^a-z0-9]/g, '').substring(0, 10) + Date.now().toString().slice(-3);
                             await dbSaveSubject({ id: newId, name: name, order: order, levels: [activeLevelTab] });
-                            createdCount++;
                         }
                     }
-                    alert(`Proses Selesai!\nUpdate: ${updatedCount} Mapel\nTambah Baru: ${createdCount} Mapel`);
-                    e.target.value = null; // Reset input
+                    alert("Import Mapel Excel Berhasil Disimpan!");
                 };
-                reader.readAsBinaryString(file);
-            };
-
-            const handleDeleteSubjectFromLevel = (subjectId, level) => {
-                if(confirm("Hapus mata pelajaran ini?")) {
-                    const subject = subjects.find(s => s.id === subjectId);
-                    if(subject) {
-                        const newLevels = subject.levels.filter(l => l !== level);
-                        if (newLevels.length > 0) dbSaveSubject({ ...subject, levels: newLevels });
-                        else dbDeleteSubject(subjectId);
-                    }
-                }
-            };
-            const getSubjectsByLevel = (level) => {
-                return subjects
-                    .filter(s => s.levels.includes(level))
-                    .sort((a, b) => (a.order || 99) - (b.order || 99));
-            };
-            
-            const calculateGrandTotal = (student) => {
-                let total = 0;
-                SEMESTERS.forEach(sem => getSubjectsByLevel(sem.level).forEach(sub => total += (student.grades?.[sem.id]?.[sub.id] || 0)));
-                return total;
-            };
-            const calculateAverage = (student) => {
-                let total = 0, count = 0;
-                SEMESTERS.forEach(sem => getSubjectsByLevel(sem.level).forEach(sub => { total += (student.grades?.[sem.id]?.[sub.id] || 0); count++; }));
-                return count === 0 ? "0.00" : (total / count).toFixed(2);
-            };
-            const calculateSemesterAverage = (student, semId) => {
-                const semInfo = SEMESTERS.find(s => s.id === semId);
-                const semSubjects = getSubjectsByLevel(semInfo.level);
-                let total = 0;
-                let count = 0;
-                semSubjects.forEach(sub => {
-                    total += (student.grades?.[semId]?.[sub.id] || 0);
-                    count++;
-                });
-                return count === 0 ? "0.00" : (total / count).toFixed(2);
-            };
-
-            const uniqueClasses = useMemo(() => {
-                const classes = students.map(s => s.class).filter(Boolean).map(c => c.trim().toUpperCase());
-                return [...new Set(classes)].sort();
-            }, [students]);
-
-            const getProcessedRankings = (filterClass) => {
-                let filteredList = [...students];
-                if (filterClass !== 'ALL') {
-                    filteredList = filteredList.filter(s => s.class && s.class.trim().toUpperCase() === filterClass);
-                }
-                const calculatedList = filteredList.map(s => ({
-                    ...s,
-                    grandTotal: calculateGrandTotal(s),
-                    average: calculateAverage(s)
-                }));
-                calculatedList.sort((a, b) => b.grandTotal - a.grandTotal);
-                return calculatedList.map((s, index) => ({
-                    ...s,
-                    rank: index + 1
-                }));
-            };
-
-            const rankedStudentsGlobal = useMemo(() => getProcessedRankings('ALL'), [students, subjects]);
-
-            const handleSaveStudent = async (e) => {
-                e.preventDefault();
-                const formData = new FormData(e.target);
-                const studentData = {
-                    id: editingStudent ? editingStudent.id : Date.now(),
-                    name: formData.get('name'),
-                    nis: formData.get('nis'),
-                    nisn: formData.get('nisn'), 
-                    class: formData.get('class'),
-                    grades: currentGrades 
-                };
-                await dbSaveStudent(studentData);
-                setIsModalOpen(false);
-            };
-
-            const handleDelete = async (id) => { if(confirm("Hapus siswa ini?")) await dbDeleteStudent(id); };
-
-            const handleDownloadRankings = (dataToExport, filterName) => {
-                if (dataToExport.length === 0) return alert("Belum ada data siswa.");
-                const headers = ["Peringkat", "NIS", "NISN", "Nama Siswa", "Kelas", "Rerata S1", "Rerata S2", "Rerata S3", "Rerata S4", "Rerata S5", "Rata-rata Total", "Grand Total"];
-                const data = dataToExport.map(s => {
-                    const row = [s.rank, s.nis, s.nisn || "-", s.name, s.class];
-                    [1, 2, 3, 4, 5].forEach(semId => row.push(calculateSemesterAverage(s, semId)));
-                    row.push(s.average);
-                    row.push(s.grandTotal);
-                    return row;
-                });
-                const ws = XLSX.utils.aoa_to_sheet([headers, ...data]);
-                const wb = XLSX.utils.book_new();
-                XLSX.utils.book_append_sheet(wb, ws, "Peringkat");
-                const fileName = `PERINGKAT_${filterName.replace(/ /g, '_')}_STAR.xlsx`;
-                XLSX.writeFile(wb, fileName);
-            };
-
-            const handleDownloadEligible = (list, filterName) => {
-                if (list.length === 0) return alert("Tidak ada siswa eligible.");
-                const headers = ["Peringkat", "NIS", "NISN", "Nama Siswa", "Kelas", "Rerata S1", "Rerata S2", "Rerata S3", "Rerata S4", "Rerata S5", "Rata-rata Total", "Grand Total", "Status SNBP"];
-                const data = list.map(s => {
-                    const row = [s.rank, s.nis, s.nisn || "-", s.name, s.class];
-                     [1, 2, 3, 4, 5].forEach(semId => row.push(calculateSemesterAverage(s, semId)));
-                    row.push(s.average); 
-                    row.push(s.grandTotal);
-                    if (s.isRejected) row.push(`MENOLAK - ${s.rejectReason}`);
-                    else row.push("ELIGIBLE");
-                    return row;
-                });
-                const ws = XLSX.utils.aoa_to_sheet([headers, ...data]);
-                const wb = XLSX.utils.book_new();
-                XLSX.utils.book_append_sheet(wb, ws, "Eligible");
-                XLSX.writeFile(wb, `ELIGIBLE_${filterName.replace(/ /g, '_')}_STAR.xlsx`);
-            };
-
-            const handleExportFullData = () => {
-                // Ensure columns are sorted by order
-                const sortedSubjects = [...subjects].sort((a, b) => (a.order || 99) - (b.order || 99));
-                
-                const headers = ["NIS", "NISN", "NAMA SISWA", "KELAS", "SEMESTER", ...sortedSubjects.map(s => s.name.toUpperCase()), "TOTAL (SEM)", "RERATA (SEM)", "TOTAL AKUMULASI", "RERATA (TOTAL)", "PERINGKAT"];
-                const dataRows = [];
-                const semesterMap = { 1: "Sem 1", 2: "Sem 2", 3: "Sem 3", 4: "Sem 4", 5: "Sem 5" };
-                const studentStatsMap = {};
-                rankedStudentsGlobal.forEach(s => studentStatsMap[s.nis] = s);
-
-                students.forEach(student => {
-                    const stats = studentStatsMap[student.nis] || { grandTotal: 0, average: "0.00", rank: '-' };
-                    SEMESTERS.forEach((sem, semIdx) => {
-                        const row = [student.nis, student.nisn || "-", student.name, student.class || "-", semesterMap[sem.id]];
-                        let semTotal = 0, count = 0;
-                        sortedSubjects.forEach(sub => {
-                            if (sub.levels.includes(sem.level)) {
-                                const val = student.grades?.[sem.id]?.[sub.id] || 0;
-                                row.push(val === 0 ? "" : val);
-                                semTotal += val; count++;
-                            } else { row.push("-"); }
-                        });
-                        const semAvg = count > 0 ? (semTotal/count).toFixed(2) : "0.00";
-                        row.push(semTotal); 
-                        row.push(semAvg);
-
-                        if (semIdx === 0) { row.push(stats.grandTotal); row.push(stats.average); row.push(stats.rank); } else { row.push(""); row.push(""); row.push(""); }
-                        dataRows.push(row);
-                    });
-                });
-                const ws = XLSX.utils.aoa_to_sheet([headers, ...dataRows]);
-                const merges = [];
-                let rStart = 1;
-                const idxTot = headers.length - 3;
-                const idxAvg = headers.length - 2;
-                const idxRank = headers.length - 1;
-                students.forEach(() => {
-                    for(let c=0; c<=3; c++) merges.push({s:{r:rStart, c:c}, e:{r:rStart+4, c:c}});
-                    merges.push({s:{r:rStart, c:idxTot}, e:{r:rStart+4, c:idxTot}});
-                    merges.push({s:{r:rStart, c:idxAvg}, e:{r:rStart+4, c:idxAvg}});
-                    merges.push({s:{r:rStart, c:idxRank}, e:{r:rStart+4, c:idxRank}});
-                    rStart += 5;
-                });
-                ws['!merges'] = merges;
-                const wb = XLSX.utils.book_new();
-                XLSX.utils.book_append_sheet(wb, ws, "Rekap Master");
-                XLSX.writeFile(wb, "REKAP_MASTER_STAR.xlsx");
+                reader.readAsBinaryString(file); e.target.value = null;
             };
 
             const handleDownloadTemplate = () => {
-                const semInfo = SEMESTERS.find(s => s.id === importSemester);
-                const semSubjects = getSubjectsByLevel(semInfo.level);
-                const headers = ["NIS", "NISN", "KELAS", "NAMA SISWA", ...semSubjects.map(s => s.name.toUpperCase())];
-                let dataRows = students.length > 0 
-                    ? students.map(s => [s.nis, s.nisn||"", s.class||"", s.name, ...semSubjects.map(()=>"")])
-                    : [["12345", "0012345", "10 IPA 1", "Siswa Baru", ...semSubjects.map(()=>"")]];
-                
-                const ws = XLSX.utils.aoa_to_sheet([headers, ...dataRows]);
-                const wb = XLSX.utils.book_new();
-                XLSX.utils.book_append_sheet(wb, ws, "Template");
-                XLSX.writeFile(wb, `TEMPLATE_${semInfo.label}.xlsx`);
-            };
-
-            const processImportData = (rows) => {
-                const semInfo = SEMESTERS.find(s => s.id === importSemester);
-                const semSubjects = getSubjectsByLevel(semInfo.level);
-                const headers = rows[0].map(h => String(h).trim().toUpperCase());
-                const idxNIS = headers.findIndex(h => h.includes("NIS"));
-                const idxNISN = headers.findIndex(h => h.includes("NISN")); 
-                
-                if (idxNIS === -1) { alert("Header NIS tidak ditemukan"); return; }
-                const subMap = {};
-                semSubjects.forEach(s => { 
-                    const idx = headers.findIndex(h => h === s.name.toUpperCase() || (s.alias && s.alias.includes(h)));
-                    if(idx !== -1) subMap[s.id] = idx;
-                });
-                const results = [];
-                let up=0, nw=0;
-                for(let i=1; i<rows.length; i++) {
-                    const row = rows[i];
-                    if(!row || !row[idxNIS]) continue;
-                    const nis = String(row[idxNIS]).trim();
-                    const nisn = idxNISN !== -1 ? String(row[idxNISN] || "").trim() : "";
-                    const match = students.find(s => s.nis === nis);
-                    const grades = {};
-                    let rowTotal = 0, rowCount = 0;
-                    semSubjects.forEach(s => {
-                        const val = subMap[s.id] !== undefined ? (parseInt(row[subMap[s.id]]) || 0) : 0;
-                        grades[s.id] = val;
-                        rowTotal += val; rowCount++;
-                    });
-                    
-                    let nameVal = "Siswa Baru";
-                    let classVal = "";
-                    const idxName = headers.findIndex(h => h.includes("NAMA"));
-                    const idxClass = headers.findIndex(h => h.includes("KELAS"));
-                    
-                    if (idxName !== -1) nameVal = row[idxName];
-                    else if (match) nameVal = match.name;
-                    else nameVal = row[idxNIS + (idxNISN!==-1?3:2)] || "Siswa Baru";
-
-                    if (idxClass !== -1) classVal = row[idxClass];
-                    else if (match) classVal = match.class;
-                    else classVal = row[idxNIS + (idxNISN!==-1?2:1)] || "";
-
-                    results.push({
-                        nis, 
-                        nisn: nisn || (match ? match.nisn : ""),
-                        name: nameVal,
-                        class: classVal,
-                        status: match ? 'existing' : 'new',
-                        studentId: match ? match.id : null,
-                        grades,
-                        total: rowTotal,
-                        average: rowCount > 0 ? (rowTotal/rowCount).toFixed(2) : "0.00"
-                    });
-                    if(match) up++; else nw++;
-                }
-                setPreviewData(results);
-                setImportStats({updated: up, new: nw, invalid: 0});
-                setImportStage('preview');
+                const semInfo = SEMESTERS.find(s => s.id === importSemester); const semSubjects = getSubjectsByLevel(semInfo.level);
+                const headers = ["NIS", "NISN", "KELAS_12", "NAMA SISWA", ...semSubjects.map(s => s.name.toUpperCase())];
+                let dataRows = students.length > 0 ? students.map(s => [s.nis, s.nisn||"", s.class||"", s.name, ...semSubjects.map(()=>"")]) : [["2122001", "0012345", "12 IPA 1", "Siswa Baru", ...semSubjects.map(()=>"")]];
+                const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([headers, ...dataRows]), "Template");
+                XLSX.writeFile(wb, `TEMPLATE_NILAI_${semInfo.label.replace(/ /g, '_')}.xlsx`);
             };
 
             const handleFileUpload = (e) => {
-                const file = e.target.files[0];
-                const reader = new FileReader();
+                const file = e.target.files[0]; if(!file) return; const reader = new FileReader();
                 reader.onload = (evt) => {
-                    const wb = XLSX.read(evt.target.result, {type:'binary'});
-                    const ws = wb.Sheets[wb.SheetNames[0]];
-                    processImportData(XLSX.utils.sheet_to_json(ws, {header:1}));
+                    const wb = XLSX.read(evt.target.result, {type:'binary'}); const ws = wb.Sheets[wb.SheetNames[0]];
+                    const rows = XLSX.utils.sheet_to_json(ws, {header:1});
+                    const semInfo = SEMESTERS.find(s => s.id === importSemester); const semSubjects = getSubjectsByLevel(semInfo.level);
+                    const headers = rows[0].map(h => String(h).trim().toUpperCase());
+                    const idxNIS = headers.findIndex(h => h.includes("NIS")); const idxNISN = headers.findIndex(h => h.includes("NISN")); 
+                    if (idxNIS === -1) { alert("Header NIS tidak ditemukan"); return; }
+                    
+                    const subMap = {}; semSubjects.forEach(s => { const idx = headers.findIndex(h => h === s.name.toUpperCase() || (s.alias && s.alias.includes(h))); if(idx !== -1) subMap[s.id] = idx; });
+                    const results = []; let up=0, nw=0;
+                    
+                    for(let i=1; i<rows.length; i++) {
+                        const row = rows[i]; if(!row || !row[idxNIS]) continue;
+                        const nis = String(row[idxNIS]).trim(); const nisn = idxNISN !== -1 ? String(row[idxNISN] || "").trim() : "";
+                        const match = students.find(s => s.nis === nis); const grades = {}; let rowTotal = 0, rowCount = 0;
+                        semSubjects.forEach(s => { 
+                            const val = subMap[s.id] !== undefined ? (parseInt(row[subMap[s.id]]) || 0) : 0; 
+                            grades[s.id] = val; 
+                            if (val > 0) { rowTotal += val; rowCount++; }
+                        });
+                        
+                        let nameVal = "Siswa Baru", classVal = "";
+                        const idxName = headers.findIndex(h => h.includes("NAMA")); const idxClass = headers.findIndex(h => h.includes("KELAS"));
+                        if (idxName !== -1) nameVal = row[idxName]; else if (match) nameVal = match.name; else nameVal = row[idxNIS + (idxNISN!==-1?3:2)] || "Siswa Baru";
+                        if (idxClass !== -1) classVal = row[idxClass]; else if (match) classVal = match.class; else classVal = row[idxNIS + (idxNISN!==-1?2:1)] || "";
+
+                        results.push({ nis, nisn: nisn || (match ? match.nisn : ""), name: nameVal, class: classVal, status: match ? 'existing' : 'new', studentId: match ? match.id : null, grades, total: rowTotal, average: rowCount > 0 ? (rowTotal/rowCount).toFixed(2) : "0.00" });
+                        if(match) up++; else nw++;
+                    }
+                    setPreviewData(results); setImportStats({updated: up, new: nw}); setImportStage('preview');
                 };
-                reader.readAsBinaryString(file);
-            };
-            
-            const handlePasteData = (rawText, semId, subjectsList) => {
-                const values = rawText.trim().split(/[\t, ]+/);
-                const newSemGrades = { ...(currentGrades[semId] || {}) };
-                subjectsList.forEach((sub, index) => {
-                    if (index < values.length) newSemGrades[sub.id] = parseInt(values[index]) || 0;
-                });
-                setCurrentGrades(prev => ({...prev, [semId]: newSemGrades}));
-                setPasteMode(false);
+                reader.readAsBinaryString(file); e.target.value = null;
             };
 
             const handleConfirmImport = async () => {
                 setLoading(true);
-                let processed = 0;
                 try {
                     for (const row of previewData) {
                         if (row.status === 'existing' && row.studentId) {
                             const existingStudent = students.find(s => s.id === row.studentId);
                             if (existingStudent) {
                                 const updatedStudent = { ...existingStudent };
-                                if (row.class) updatedStudent.class = row.class;
-                                if (row.nisn) updatedStudent.nisn = row.nisn;
-                                if (!updatedStudent.grades) updatedStudent.grades = {};
-                                if (!updatedStudent.grades[importSemester]) updatedStudent.grades[importSemester] = {};
+                                if (row.class) updatedStudent.class = row.class; if (row.nisn) updatedStudent.nisn = row.nisn;
+                                if (!updatedStudent.grades) updatedStudent.grades = {}; if (!updatedStudent.grades[importSemester]) updatedStudent.grades[importSemester] = {};
                                 Object.keys(row.grades).forEach(subjectId => updatedStudent.grades[importSemester][subjectId] = row.grades[subjectId]);
                                 await dbSaveStudent(updatedStudent);
                             }
                         } else if (row.status === 'new') {
-                            const newId = Date.now() + Math.floor(Math.random() * 10000);
-                            const newStudent = { id: newId, name: row.name, nis: row.nis, nisn: row.nisn, class: row.class, grades: {} };
-                            newStudent.grades[importSemester] = row.grades;
+                            const newStudent = { id: Date.now() + Math.floor(Math.random() * 10000), name: row.name, nis: row.nis, nisn: row.nisn, class: row.class, grades: { [importSemester]: row.grades } };
                             await dbSaveStudent(newStudent);
                         }
-                        processed++;
                     }
-                    alert(`Import Selesai! ${processed} data berhasil diproses ke Database.`);
-                } catch (error) {
-                    console.error(error);
-                    alert("Terjadi kesalahan saat menyimpan import: " + error.message);
-                } finally {
-                    setLoading(false);
-                    setImportStage('upload'); 
-                    setIsImportModalOpen(false);
-                }
-             };
-
-            const handleSaveRejection = async () => {
-                setIsSavingRejection(true);
-                try {
-                    if(!selectedRejectStudent || !rejectReason) {
-                        throw new Error("Mohon pilih siswa dari hasil pencarian dan isi alasan penolakan.");
-                    }
-                    
-                    await dbSaveRejection({
-                        studentId: selectedRejectStudent.id,
-                        name: selectedRejectStudent.name,
-                        nis: selectedRejectStudent.nis,
-                        nisn: selectedRejectStudent.nisn || "-",
-                        reason: rejectReason
-                    });
-                    
-                    setSelectedRejectStudent(null);
-                    setRejectReason("");
-                    setRejectSearch("");
-                    alert("Data berhasil disimpan ke database.");
-                } catch (error) {
-                    console.error("Gagal menyimpan:", error);
-                    alert("Gagal menyimpan: " + error.message);
-                } finally {
-                    setIsSavingRejection(false);
-                }
+                    alert(`Import Selesai! Data berhasil diproses.`);
+                } catch (error) { alert("Kesalahan: " + error.message); } finally { setLoading(false); setImportStage('upload'); setPreviewData([]); }
             };
 
-            const handleDeleteRejection = async (id) => {
-                if(confirm("Hapus data penolakan ini? Siswa akan kembali masuk daftar Eligible.")) {
-                    try {
-                        await dbDeleteRejection(id);
-                    } catch (error) {
-                        alert("Gagal menghapus: " + error.message);
-                    }
-                }
+            const handleDownloadRankings = (dataToExport, filterName) => {
+                if (dataToExport.length === 0) return alert("Belum ada data.");
+                const headers = ["Peringkat", "NIS", "NISN", "Nama Siswa", "Kelas 12", "Rerata S1", "Rerata S2", "Rerata S3", "Rerata S4", "Rerata S5", "Rata-rata Keseluruhan", "Total Akhir"];
+                const data = dataToExport.map(s => [s.rank, s.nis, s.nisn||"-", s.name, s.class, ...[1,2,3,4,5].map(sem=>s.stats.sems[sem].avg), s.stats.grandAvg, s.stats.grandTotal]);
+                const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([headers, ...data]), "Peringkat");
+                XLSX.writeFile(wb, `PERINGKAT_${filterName.replace(/ /g, '_')}_SI_ELI.xlsx`);
+            };
+
+            // =========================================================================
+            // REKAP MASTER EXPORT: 1 ROW PER STUDENT (1D FORMAT), NO MERGED CELLS
+            // =========================================================================
+            const handleExportFullData = () => {
+                if (students.length === 0) return alert("Tidak ada data untuk diekspor.");
+                
+                const headers = ["NIS", "NISN", "NAMA SISWA", "KELAS 12"];
+                SEMESTERS.forEach(sem => {
+                    getSubjectsByLevel(sem.level).forEach(sub => {
+                        headers.push(`S${sem.id} ${sub.name.toUpperCase()}`);
+                    });
+                    headers.push(`RATA2 S${sem.id}`);
+                });
+                headers.push("TOTAL AKHIR", "RATA-RATA KESELURUHAN", "PERINGKAT");
+                
+                const statsMap = {}; rankedStudentsGlobal.forEach(s => statsMap[s.nis] = s);
+                
+                const dataRows = processedStudents.map(student => {
+                    const rankedData = statsMap[student.nis] || { rank: '-' };
+                    const row = [student.nis, student.nisn || "-", student.name, student.class || "-"];
+                    
+                    SEMESTERS.forEach(sem => {
+                        getSubjectsByLevel(sem.level).forEach(sub => {
+                            const v = parseInt(student.grades?.[sem.id]?.[sub.id], 10) || 0;
+                            row.push(v !== 0 ? v : ""); 
+                        });
+                        row.push(student.stats.sems[sem.id].avg);
+                    });
+                    
+                    row.push(student.stats.grandTotal, student.stats.grandAvg, rankedData.rank);
+                    return row;
+                });
+                
+                const ws = XLSX.utils.aoa_to_sheet([headers, ...dataRows]); 
+                const wb = XLSX.utils.book_new(); 
+                XLSX.utils.book_append_sheet(wb, ws, "Rekap Master");
+                XLSX.writeFile(wb, "REKAP_MASTER_SI_ELI.xlsx");
+            };
+
+            const handleSaveRejection = async () => {
+                try {
+                    if(!selectedRejectStudent || !rejectReason) throw new Error("Pilih siswa dari menu dropdown dan isi alasan!");
+                    await dbSaveRejection({ studentId: selectedRejectStudent.id, name: selectedRejectStudent.name, nis: selectedRejectStudent.nis, nisn: selectedRejectStudent.nisn || "-", reason: rejectReason });
+                    setSelectedRejectStudent(null); setRejectReason(""); setRejectSearch(""); alert("Data penolakan berhasil disimpan.");
+                } catch (e) { alert(e.message); }
             };
 
             // --- VIEW RENDERERS ---
             const renderDashboard = () => (
-                <div className="space-y-6 animate-fade-in">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        <Card title="Total Siswa" value={students.length} icon={<Users size={24}/>} color="bg-blue-500" />
-                        <Card title="Rata-rata Angkatan" value={rankedStudentsGlobal.length > 0 ? (rankedStudentsGlobal.reduce((acc, curr) => acc + parseFloat(curr.average), 0) / rankedStudentsGlobal.length).toFixed(2) : "0.00"} icon={<BarChart3 size={24}/>} color="bg-emerald-500" />
-                        <Card title="Juara Umum" value={rankedStudentsGlobal.length > 0 ? rankedStudentsGlobal[0].name : "-"} icon={<Trophy size={24}/>} color="bg-amber-500" />
+                <div className="space-y-8 animate-fade-in">
+                    <div><h2 className="text-3xl font-extrabold text-slate-800 tracking-tight flex items-center gap-2"><BarChart3 className="text-indigo-600"/> Dasbor SI ELI</h2><p className="text-slate-500 mt-1">Ringkasan statistik akademik dan peringkat tertinggi angkatan.</p></div>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                        <Card title="Total Siswa" value={processedStudents.length} icon={<Users size={36}/>} gradient="bg-gradient-to-br from-indigo-500 via-purple-500 to-indigo-600" />
+                        <Card title="Rata-rata Angkatan" value={rankedStudentsGlobal.length > 0 ? (rankedStudentsGlobal.reduce((acc, curr) => acc + parseFloat(curr.stats.grandAvg), 0) / rankedStudentsGlobal.length).toFixed(2) : "0.00"} icon={<BarChart3 size={36}/>} gradient="bg-gradient-to-br from-emerald-400 to-teal-500" />
+                        <Card title="Peringkat #1" value={rankedStudentsGlobal.length > 0 ? rankedStudentsGlobal[0].name : "-"} icon={<Trophy size={36}/>} gradient="bg-gradient-to-br from-amber-400 to-orange-500" />
                     </div>
-                    <div className="bg-white rounded-xl shadow-sm border p-6">
-                        <h3 className="font-bold text-lg mb-4">Top 5 Siswa Terbaik (Angkatan)</h3>
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-sm text-left">
-                                <thead className="bg-slate-50 font-bold text-slate-700"><tr><th className="p-3 w-12 text-center">Rank</th><th className="p-3 min-w-[200px]">Nama Siswa</th><th className="p-3 text-center">Sem 1</th><th className="p-3 text-center">Sem 2</th><th className="p-3 text-center">Sem 3</th><th className="p-3 text-center">Sem 4</th><th className="p-3 text-center">Sem 5</th><th className="p-3 text-right text-blue-700">Total Nilai Semester</th></tr></thead>
-                                <tbody className="divide-y divide-slate-100">
-                                    {rankedStudentsGlobal.slice(0, 5).map(s => {
-                                        const semTotals = [1, 2, 3, 4, 5].map(semId => {
-                                            const semInfo = SEMESTERS.find(sem => sem.id === semId);
-                                            const semSubjects = getSubjectsByLevel(semInfo.level);
-                                            return semSubjects.reduce((acc, sub) => acc + (s.grades?.[semId]?.[sub.id] || 0), 0);
-                                        });
-                                        return (
-                                            <tr key={s.id} className="hover:bg-slate-50 transition-colors">
-                                                <td className="p-3 text-center"><span className={`inline-flex items-center justify-center w-6 h-6 rounded-full text-xs font-bold ${s.rank <= 3 ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-500'}`}>{s.rank}</span></td>
-                                                <td className="p-3 font-medium text-slate-900">{s.name}</td>
-                                                {semTotals.map((total, idx) => (<td key={idx} className="p-3 text-center text-slate-500 font-mono text-xs">{total > 0 ? total : "-"}</td>))}
-                                                <td className="p-3 text-right font-bold text-blue-600 font-mono text-base">{s.grandTotal}</td>
-                                            </tr>
-                                        );
-                                    })}
-                                    {rankedStudentsGlobal.length === 0 && (<tr><td colSpan="8" className="p-8 text-center text-slate-400 italic">Belum ada data siswa untuk ditampilkan.</td></tr>)}
+                    <div className="glass-card rounded-[2rem] overflow-hidden">
+                        <div className="p-8 border-b border-slate-100 flex justify-between items-center bg-white/50"><h3 className="font-extrabold text-xl text-slate-800 flex items-center gap-2"><Award className="text-indigo-500" size={24}/> Top 5 Siswa Terbaik (Angkatan)</h3></div>
+                        <div className="overflow-x-auto p-4">
+                            <table className="modern-table">
+                                <thead><tr><th className="text-center w-16">Rank</th><th>Nama Siswa</th><th className="text-center">S1 (Rata-rata)</th><th className="text-center">S2</th><th className="text-center">S3</th><th className="text-center">S4</th><th className="text-center">S5</th><th className="text-right text-indigo-600 font-bold">Total Akhir</th></tr></thead>
+                                <tbody>
+                                    {rankedStudentsGlobal.slice(0, 5).map(s => (
+                                        <tr key={s.id}>
+                                            <td className="text-center"><span className={`inline-flex items-center justify-center w-10 h-10 rounded-xl text-sm font-bold shadow-sm ${s.rank <= 3 ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-500'}`}>{s.rank}</span></td>
+                                            <td><div className="font-extrabold text-slate-800 text-base">{s.name}</div><div className="text-xs font-medium text-slate-400 font-mono mt-0.5">{s.class}</div></td>
+                                            {[1,2,3,4,5].map(semId => (<td key={semId} className="text-center font-mono text-sm text-slate-500">{s.stats.sems[semId].avg}</td>))}
+                                            <td className="text-right font-extrabold text-indigo-600 font-mono text-xl">{s.stats.grandTotal}</td>
+                                        </tr>
+                                    ))}
+                                    {rankedStudentsGlobal.length === 0 && (<tr><td colSpan="8" className="p-16 text-center text-slate-400 italic font-medium">Belum ada data siswa untuk ditampilkan.</td></tr>)}
                                 </tbody>
                             </table>
                         </div>
@@ -837,82 +554,89 @@
                 </div>
             );
 
-            const renderDataInput = () => (
-                <div className="bg-white rounded-xl shadow-sm border p-6 animate-fade-in">
-                    <div className="flex justify-between items-center mb-6">
-                        <h3 className="font-bold text-lg">Data Siswa</h3>
-                        <div className="flex gap-2">
-                             <button onClick={()=>setIsSubjectModalOpen(true)} className="px-3 py-2 bg-slate-100 rounded text-sm hover:bg-slate-200"><BookOpen size={16}/> Atur Mapel</button>
-                            <button onClick={()=>{setIsImportModalOpen(true); setImportStage('upload');}} className="px-3 py-2 bg-green-600 text-white rounded text-sm hover:bg-green-700"><FileUp size={16}/> Import Excel</button>
-                            <button onClick={()=>{setEditingStudent(null); setIsModalOpen(true);}} className="px-3 py-2 bg-blue-600 text-white rounded text-sm hover:bg-blue-700"><Plus size={16}/> Tambah</button>
+            const renderDataInput = () => {
+                const filteredStudents = processedStudents.filter(s => s.name.toLowerCase().includes(searchTerm) || s.nis.includes(searchTerm));
+                return (
+                    <div className="space-y-6 animate-fade-in">
+                        <div><h2 className="text-3xl font-extrabold text-slate-800 tracking-tight flex items-center gap-2"><FileSpreadsheet className="text-indigo-600"/> Data Siswa & Rapor</h2><p className="text-slate-500 mt-1">Tabel nilai rata-rata per-semester dan akumulasi nilai murni.</p></div>
+                        <div className="glass-card rounded-[2rem] p-8">
+                            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6 pb-6 border-b border-slate-100">
+                                <div className="relative w-full md:w-80">
+                                    <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-slate-400" size={18} />
+                                    <input type="text" placeholder="Cari NIS atau Nama..." className="pl-12 pr-4 py-3 bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-indigo-500 focus:bg-white w-full text-sm font-semibold transition-all shadow-inner" onChange={(e) => setSearchTerm(e.target.value.toLowerCase())}/>
+                                </div>
+                                <div className="flex gap-3 w-full md:w-auto overflow-x-auto pb-2 md:pb-0">
+                                    {selectedStudents.length > 0 && (
+                                        <button onClick={handleBulkDelete} className="flex-1 md:flex-none px-6 py-3 bg-red-500 shadow-lg shadow-red-500/30 text-white rounded-2xl text-sm font-bold hover:bg-red-600 hover:-translate-y-0.5 flex items-center justify-center gap-2 transition-all"><Trash2 size={18}/> Hapus {selectedStudents.length} Terpilih</button>
+                                    )}
+                                    <button onClick={()=>setIsSubjectModalOpen(true)} className="flex-1 md:flex-none px-6 py-3 bg-white border border-slate-200 shadow-sm rounded-2xl text-sm font-bold text-slate-700 hover:bg-slate-50 hover:text-indigo-600 flex items-center justify-center gap-2 transition-all"><BookOpen size={18}/> Setup Mapel</button>
+                                    <button onClick={()=>{setEditingStudent(null); setIsModalOpen(true);}} className="flex-1 md:flex-none px-6 py-3 bg-indigo-600 shadow-lg shadow-indigo-600/30 text-white rounded-2xl text-sm font-bold hover:bg-indigo-700 hover:-translate-y-0.5 flex items-center justify-center gap-2 transition-all"><Plus size={18}/> Tambah Siswa</button>
+                                </div>
+                            </div>
+                            <div className="overflow-x-auto rounded-2xl border border-slate-100">
+                                <table className="modern-table">
+                                    <thead>
+                                        <tr>
+                                            <th className="w-12 text-center"><input type="checkbox" onChange={(e) => handleSelectAllStudents(e, filteredStudents)} checked={filteredStudents.length > 0 && selectedStudents.length === filteredStudents.length} className="w-4 h-4 cursor-pointer accent-indigo-600"/></th>
+                                            <th>Identitas Siswa</th>
+                                            <th className="text-center">S1 (Avg)</th><th className="text-center">S2</th><th className="text-center">S3</th><th className="text-center">S4</th><th className="text-center">S5</th>
+                                            <th className="text-center">Rerata Keseluruhan</th><th className="text-right">Total Akhir</th><th className="text-right">Aksi</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {filteredStudents.map(s => (
+                                            <tr key={s.id} className={selectedStudents.includes(s.id) ? "bg-indigo-50/50" : ""}>
+                                                <td className="text-center"><input type="checkbox" checked={selectedStudents.includes(s.id)} onChange={() => handleSelectStudent(s.id)} className="w-4 h-4 cursor-pointer accent-indigo-600"/></td>
+                                                <td><div className="font-bold text-slate-800 text-base">{s.name}</div><div className="text-xs font-mono text-slate-400 mt-0.5">{s.nis} • {s.class}</div></td>
+                                                {[1,2,3,4,5].map(semId => (<td key={semId} className="text-center font-mono text-xs text-slate-500">{s.stats.sems[semId].avg}</td>))}
+                                                <td className="text-center font-mono font-bold text-slate-600 bg-slate-50/50">{s.stats.grandAvg}</td>
+                                                <td className="text-right font-extrabold text-indigo-600 font-mono text-base">{s.stats.grandTotal}</td>
+                                                <td className="text-right"><button onClick={()=>{setEditingStudent(s); setIsModalOpen(true);}} className="text-indigo-500 font-extrabold hover:text-indigo-700 text-sm tracking-wide">EDIT</button></td>
+                                            </tr>
+                                        ))}
+                                        {filteredStudents.length===0 && <tr><td colSpan="10" className="p-12 text-center text-slate-400 italic">Belum ada data siswa. Silakan tambah data atau Import.</td></tr>}
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
                     </div>
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-sm text-left">
-                            <thead className="bg-slate-50 font-bold"><tr><th className="p-3">NIS</th><th className="p-3">NISN</th><th className="p-3">Nama</th><th className="p-3">Kelas</th><th className="p-3 text-center">Total (5 Sem)</th><th className="p-3 text-center">Rerata Total</th><th className="p-3 text-right">Aksi</th></tr></thead>
-                            <tbody>
-                                {students.map(s => {
-                                    const total = calculateGrandTotal(s);
-                                    const avg = calculateAverage(s);
-                                    return (
-                                        <tr key={s.id} className="border-b hover:bg-slate-50">
-                                            <td className="p-3 font-mono">{s.nis}</td>
-                                            <td className="p-3 font-mono text-slate-600">{s.nisn || "-"}</td>
-                                            <td className="p-3">{s.name}</td><td className="p-3">{s.class}</td><td className="p-3 text-center font-bold text-blue-700">{total}</td><td className="p-3 text-center">{avg}</td>
-                                            <td className="p-3 text-right space-x-2"><button onClick={()=>{setEditingStudent(s); setIsModalOpen(true);}} className="text-blue-600 hover:underline">Edit/Nilai</button><button onClick={()=>handleDelete(s.id)} className="text-red-600 hover:underline">Hapus</button></td>
-                                        </tr>
-                                    );
-                                })}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            );
+                );
+            };
 
             const renderRankings = () => {
                 const displayedRankings = getProcessedRankings(rankFilter);
                 return (
-                    <div className="bg-white rounded-xl shadow-sm border p-6 animate-fade-in">
-                        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
-                            <div><h3 className="font-bold text-lg text-slate-800 flex items-center gap-2"><Trophy size={20} className="text-amber-500"/> Peringkat Siswa</h3><p className="text-xs text-slate-500">Urutan berdasarkan Total Nilai (5 Semester)</p></div>
-                            <div className="flex flex-col md:flex-row gap-2 w-full md:w-auto">
-                                <div className="relative">
-                                    <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400" size={16} />
-                                    <select value={rankFilter} onChange={(e) => setRankFilter(e.target.value)} className="pl-10 pr-4 py-2 border rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-full md:w-48 appearance-none">
-                                        <option value="ALL">Semua Angkatan</option>
-                                        {uniqueClasses.map(cls => (<option key={cls} value={cls}>Kelas {cls}</option>))}
-                                    </select>
+                    <div className="space-y-6 animate-fade-in">
+                        <div><h2 className="text-3xl font-extrabold text-slate-800 tracking-tight flex items-center gap-2"><Trophy className="text-amber-500"/> Peringkat Keseluruhan</h2><p className="text-slate-500 mt-1">Urutan murni berdasarkan nilai Total Akhir.</p></div>
+                        <div className="glass-card rounded-[2rem] p-8">
+                            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+                                <div className="flex items-center gap-3 w-full md:w-auto">
+                                    <div className="relative flex-1 md:flex-none">
+                                        <Filter className="absolute left-4 top-1/2 transform -translate-y-1/2 text-slate-400" size={18} />
+                                        <select value={rankFilter} onChange={(e) => setRankFilter(e.target.value)} className="pl-12 pr-10 py-3 bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-indigo-500 w-full md:w-64 appearance-none font-bold text-slate-700 text-sm cursor-pointer hover:bg-slate-100 transition-colors shadow-inner">
+                                            <option value="ALL">Semua Kelas 12</option>
+                                            {uniqueClasses.map(cls => (<option key={cls} value={cls}>Kelas {cls}</option>))}
+                                        </select>
+                                    </div>
                                 </div>
-                                <button onClick={() => handleDownloadRankings(displayedRankings, rankFilter === 'ALL' ? 'Semua Angkatan' : rankFilter)} className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center justify-center gap-2 transition-colors"><Download size={16}/> Download Excel</button>
+                                <button onClick={() => handleDownloadRankings(displayedRankings, rankFilter === 'ALL' ? 'Semua Angkatan' : rankFilter)} className="bg-emerald-500 hover:bg-emerald-600 hover:-translate-y-0.5 shadow-lg shadow-emerald-500/30 text-white px-6 py-3 rounded-2xl text-sm font-bold flex items-center justify-center gap-2 transition-all w-full md:w-auto"><Download size={18}/> Unduh Peringkat (Excel)</button>
                             </div>
-                        </div>
-                        <div className="relative mb-4">
-                            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400" size={18} />
-                            <input type="text" placeholder="Cari nama siswa di daftar ini..." className="pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 w-full" onChange={(e) => setSearchTerm(e.target.value.toLowerCase())}/>
-                        </div>
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-sm text-left">
-                                <thead className="bg-slate-50 font-bold text-slate-700"><tr><th className="p-3 w-16 text-center">Rank</th><th className="p-3">NIS</th><th className="p-3">NISN</th><th className="p-3">Kelas</th><th className="p-3 min-w-[200px]">Nama Siswa</th><th className="p-3 text-center text-xs">Rerata S1</th><th className="p-3 text-center text-xs">Rerata S2</th><th className="p-3 text-center text-xs">Rerata S3</th><th className="p-3 text-center text-xs">Rerata S4</th><th className="p-3 text-center text-xs">Rerata S5</th><th className="p-3 text-right">Rerata Total</th><th className="p-3 text-right font-bold text-blue-700">Total Nilai</th></tr></thead>
-                                <tbody className="divide-y divide-slate-100">
-                                    {displayedRankings.filter(s => s.name.toLowerCase().includes(searchTerm)).map(s => (
-                                            <tr key={s.id} className="hover:bg-slate-50 transition-colors">
-                                                <td className="p-3 text-center"><span className={`inline-flex items-center justify-center w-8 h-8 rounded-full font-bold text-xs ${s.rank <= 3 ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-500'}`}>#{s.rank}</span></td>
-                                                <td className="p-3 font-mono text-slate-500">{s.nis}</td>
-                                                <td className="p-3 font-mono text-slate-500">{s.nisn || "-"}</td>
-                                                <td className="p-3 font-medium text-slate-600">{s.class}</td>
-                                                <td className="p-3 font-bold text-slate-800">{s.name}</td>
-                                                <td className="p-3 text-center font-mono text-xs text-slate-500">{calculateSemesterAverage(s, 1)}</td>
-                                                <td className="p-3 text-center font-mono text-xs text-slate-500">{calculateSemesterAverage(s, 2)}</td>
-                                                <td className="p-3 text-center font-mono text-xs text-slate-500">{calculateSemesterAverage(s, 3)}</td>
-                                                <td className="p-3 text-center font-mono text-xs text-slate-500">{calculateSemesterAverage(s, 4)}</td>
-                                                <td className="p-3 text-center font-mono text-xs text-slate-500">{calculateSemesterAverage(s, 5)}</td>
-                                                <td className="p-3 text-right font-mono">{s.average}</td><td className="p-3 text-right font-bold text-blue-600 text-lg">{s.grandTotal}</td>
+                            <div className="overflow-x-auto rounded-2xl border border-slate-100">
+                                <table className="modern-table">
+                                    <thead><tr><th className="text-center">Rank</th><th>Nama Siswa</th><th className="text-center">S1 (Avg)</th><th className="text-center">S2</th><th className="text-center">S3</th><th className="text-center">S4</th><th className="text-center">S5</th><th className="text-center">Rerata Keseluruhan</th><th className="text-right font-bold text-indigo-600">Total Akhir</th></tr></thead>
+                                    <tbody>
+                                        {displayedRankings.map(s => (
+                                            <tr key={s.id}>
+                                                <td className="text-center"><span className={`inline-flex items-center justify-center w-10 h-10 rounded-xl font-bold text-base shadow-sm ${s.rank <= 3 ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-500'}`}>#{s.rank}</span></td>
+                                                <td><div className="font-bold text-slate-800 text-base">{s.name}</div><div className="text-xs font-mono text-slate-400 mt-0.5">{s.class}</div></td>
+                                                {[1,2,3,4,5].map(semId => (<td key={semId} className="text-center font-mono text-sm text-slate-500">{s.stats.sems[semId].avg}</td>))}
+                                                <td className="text-center font-mono font-bold text-slate-600 bg-slate-50/50">{s.stats.grandAvg}</td>
+                                                <td className="text-right font-extrabold text-indigo-600 text-xl font-mono">{s.stats.grandTotal}</td>
                                             </tr>
-                                    ))
-                                    }
-                                    {displayedRankings.length === 0 && (<tr><td colSpan="12" className="p-8 text-center text-slate-400 italic">Tidak ada data untuk filter ini.</td></tr>)}
-                                </tbody>
-                            </table>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
                     </div>
                 );
@@ -920,372 +644,397 @@
 
             const renderEligible = () => {
                 const processedList = getProcessedRankings(eligibleFilter);
-                // --- FIX: Paksa konversi ke String untuk perbandingan ID yang aman (Angka vs String) ---
                 const rejectedIds = rejectedStudents.map(r => String(r.studentId));
-                
-                // Filter siswa yang tidak menolak
                 const availableStudents = processedList.filter(s => !rejectedIds.includes(String(s.id)));
-                
-                // --- RE-RANKING LOGIC ---
-                // Urutkan ulang ranking dari 1 untuk siswa yang tersedia (Eligible)
-                // Kita simpan ranking asli di 'originalRank' jika sewaktu-waktu dibutuhkan
-                const reRankedAvailable = availableStudents.map((s, index) => ({
-                    ...s,
-                    originalRank: s.rank, // Simpan ranking global asli
-                    rank: index + 1       // Ranking baru khusus menu Eligible (urut 1, 2, 3...)
-                }));
-                // ------------------------
-
+                const reRankedAvailable = availableStudents.map((s, index) => ({ ...s, originalRank: s.rank, rank: index + 1 }));
                 const eligibleList = reRankedAvailable.slice(0, eligibleQuota);
                 
-                // Persiapkan data download
-                // Kita tidak melakukan sort ulang berdasarkan rank campuran agar urutan Eligible (1-N) tetap diatas
-                const downloadList = [...eligibleList];
-                
-                rejectedStudents.forEach(rej => {
-                    const studentData = processedList.find(s => String(s.id) === String(rej.studentId));
-                    if (studentData) {
-                        // Siswa rejected tetap menggunakan ranking global aslinya atau ditandai khusus
-                        // Di sini kita biarkan ranking globalnya, tapi di excel nanti akan ada di bawah
-                        downloadList.push({ ...studentData, isRejected: true, rejectReason: rej.reason });
-                    }
-                });
-                
-                // Hapus sorting global rank agar list download mengikuti urutan: Eligible (urut 1-N) baru kemudian Rejected
-                // downloadList.sort((a, b) => a.rank - b.rank); <--- DIHAPUS
-
                 return (
-                    <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden animate-fade-in">
-                        <div className="p-6 border-b border-slate-100">
-                            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4">
-                                <div><h3 className="font-bold text-lg text-slate-800 flex items-center gap-2"><Award size={20} className="text-purple-600"/> Siswa Eligible (SNBP)</h3><p className="text-sm text-slate-500">Tentukan kuota siswa terbaik berdasarkan filter.</p></div>
-                                <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
-                                    <div className="relative">
-                                        <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400" size={14} />
-                                        <select value={eligibleFilter} onChange={(e) => setEligibleFilter(e.target.value)} className="pl-9 pr-8 py-2 border rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 appearance-none font-medium text-slate-700">
-                                            <option value="ALL">Semua Angkatan</option>
+                    <div className="space-y-6 animate-fade-in">
+                        <div><h2 className="text-3xl font-extrabold text-slate-800 tracking-tight flex items-center gap-2"><Award className="text-purple-600"/> Siswa Eligible (SNBP)</h2><p className="text-slate-500 mt-1">Filter otomatis siswa terbaik yang berhak mendaftar SNBP.</p></div>
+                        <div className="glass-card rounded-[2rem] overflow-hidden">
+                            <div className="p-8 border-b border-slate-100 bg-purple-50/50">
+                                <div className="flex flex-col md:flex-row justify-between gap-6">
+                                    <div className="flex flex-wrap items-center gap-4">
+                                        <select value={eligibleFilter} onChange={(e) => setEligibleFilter(e.target.value)} className="px-5 py-3 bg-white border-none rounded-2xl focus:ring-2 focus:ring-purple-500 font-bold text-slate-700 text-sm shadow-sm hover:shadow-md transition-all">
+                                            <option value="ALL">Semua Kelas 12</option>
                                             {uniqueClasses.map(cls => (<option key={cls} value={cls}>Kelas {cls}</option>))}
                                         </select>
+                                        <div className="flex items-center bg-white rounded-2xl shadow-sm overflow-hidden focus-within:ring-2 focus-within:ring-purple-500 transition-shadow">
+                                            <span className="px-5 py-3 bg-slate-50 text-slate-500 text-sm font-extrabold border-r border-slate-100">Kuota SNBP</span>
+                                            <input type="number" min="1" value={eligibleQuota} onChange={(e) => setEligibleQuota(parseInt(e.target.value) || 0)} className="w-24 px-4 py-3 text-center font-extrabold outline-none text-purple-700 bg-white text-lg"/>
+                                        </div>
                                     </div>
-                                    <div className="flex items-center border rounded-lg overflow-hidden bg-white">
-                                        <span className="px-3 py-2 bg-slate-50 text-slate-500 text-sm font-medium border-r">Kuota</span>
-                                        <input type="number" min="1" max={reRankedAvailable.length} value={eligibleQuota} onChange={(e) => setEligibleQuota(parseInt(e.target.value) || 0)} className="w-16 px-2 py-2 text-center font-bold outline-none text-purple-700"/>
-                                    </div>
-                                    <button onClick={() => handleDownloadEligible(downloadList, eligibleFilter === 'ALL' ? 'Semua Angkatan' : eligibleFilter)} className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition-colors ml-auto md:ml-0"><Download size={16}/> Download Excel</button>
+                                    <div className="flex items-center text-sm font-bold text-purple-700 bg-purple-100 px-6 py-3 rounded-2xl"><CheckCircle size={20} className="mr-2"/> Terpilih {eligibleList.length} dari {reRankedAvailable.length}</div>
                                 </div>
                             </div>
-                            <div className="bg-purple-50 text-purple-800 text-sm p-3 rounded border border-purple-100 flex items-center gap-2"><CheckCircle size={16} /> Menampilkan <b>{eligibleList.length}</b> siswa terbaik dari total {reRankedAvailable.length} siswa tersedia ({eligibleFilter === 'ALL' ? 'Satu Angkatan' : `Kelas ${eligibleFilter}`}).</div>
-                        </div>
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-sm text-left text-slate-600">
-                                <thead className="bg-purple-100 font-bold text-purple-900">
-                                    <tr>
-                                        <th className="p-3 w-16 text-center">Rank</th><th className="p-3">NIS</th><th className="p-3">NISN</th><th className="p-3">Kelas</th><th className="p-3 min-w-[200px]">Nama Siswa</th><th className="p-3 text-center text-xs">Rerata S1</th><th className="p-3 text-center text-xs">Rerata S2</th><th className="p-3 text-center text-xs">Rerata S3</th><th className="p-3 text-center text-xs">Rerata S4</th><th className="p-3 text-center text-xs">Rerata S5</th><th className="p-3 text-right">Rerata Total</th><th className="p-3 text-right font-bold">Total Nilai</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-slate-100">
-                                    {eligibleList.map((s) => (
-                                        <tr key={s.id} className="hover:bg-purple-50/50 transition-colors">
-                                            <td className="p-3 text-center font-bold text-slate-700">#{s.rank}</td>
-                                            <td className="p-3 font-mono text-xs">{s.nis}</td>
-                                            <td className="p-3 font-mono text-xs">{s.nisn || "-"}</td>
-                                            <td className="p-3 font-medium">{s.class}</td>
-                                            <td className="p-3 font-medium text-slate-900">{s.name}</td>
-                                            <td className="p-3 text-center font-mono text-xs text-slate-500">{calculateSemesterAverage(s, 1)}</td>
-                                            <td className="p-3 text-center font-mono text-xs text-slate-500">{calculateSemesterAverage(s, 2)}</td>
-                                            <td className="p-3 text-center font-mono text-xs text-slate-500">{calculateSemesterAverage(s, 3)}</td>
-                                            <td className="p-3 text-center font-mono text-xs text-slate-500">{calculateSemesterAverage(s, 4)}</td>
-                                            <td className="p-3 text-center font-mono text-xs text-slate-500">{calculateSemesterAverage(s, 5)}</td>
-                                            <td className="p-3 text-right font-mono">{s.average}</td>
-                                            <td className="p-3 text-right font-bold text-purple-700 text-lg">{s.grandTotal}</td>
-                                        </tr>
-                                    ))}
-                                    {eligibleList.length === 0 && (<tr><td colSpan="12" className="p-8 text-center text-slate-400 italic">Tidak ada siswa eligible untuk kriteria ini.</td></tr>)}
-                                </tbody>
-                            </table>
+                            <div className="overflow-x-auto p-4">
+                                <table className="modern-table">
+                                    <thead className="bg-purple-50/50"><tr><th className="text-center w-16 text-purple-800">SNBP</th><th className="text-purple-800">Nama Siswa</th><th className="text-center text-purple-800">S1 (Avg)</th><th className="text-center text-purple-800">S2</th><th className="text-center text-purple-800">S3</th><th className="text-center text-purple-800">S4</th><th className="text-center text-purple-800">S5</th><th className="text-center text-purple-800">Rerata Keseluruhan</th><th className="text-right font-bold text-purple-800">Total Akhir</th></tr></thead>
+                                    <tbody>
+                                        {eligibleList.map((s) => (
+                                            <tr key={s.id} className="hover:bg-purple-50/40">
+                                                <td className="text-center"><span className="inline-flex items-center justify-center w-10 h-10 rounded-xl font-extrabold text-base shadow-sm bg-purple-100 text-purple-700">#{s.rank}</span></td>
+                                                <td><div className="font-bold text-slate-800 text-base">{s.name}</div><div className="text-xs font-mono text-slate-400 mt-0.5">{s.class}</div></td>
+                                                {[1,2,3,4,5].map(semId => (<td key={semId} className="text-center font-mono text-sm text-purple-600/70">{s.stats.sems[semId].avg}</td>))}
+                                                <td className="text-center font-mono font-bold text-purple-700 bg-purple-50/50">{s.stats.grandAvg}</td>
+                                                <td className="text-right font-extrabold text-purple-700 text-xl font-mono">{s.stats.grandTotal}</td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
                     </div>
                 );
             };
 
             const renderRejectedMenu = () => (
-                <div className="bg-white rounded-xl shadow-sm border p-6 animate-fade-in">
-                    <h3 className="font-bold text-lg mb-4 flex items-center gap-2"><UserMinus className="text-red-600" size={20}/> Manajemen Siswa Menolak Eligible</h3>
-                    <div className="mb-6 p-4 bg-slate-50 border rounded-lg">
-                        <h4 className="font-bold text-sm text-slate-700 mb-2">Input Siswa Menolak</h4>
-                        <div className="flex flex-col md:flex-row gap-3">
-                            <div className="flex-1 relative">
-                                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400" size={16} />
-                                <input 
-                                    type="text" 
-                                    placeholder="Cari Nama/NIS..." 
-                                    value={rejectSearch}
-                                    onChange={(e) => {
-                                        setRejectSearch(e.target.value.toLowerCase());
-                                        setSelectedRejectStudent(null);
-                                    }}
-                                    className="pl-9 p-2 border rounded w-full text-sm"
-                                />
-                                {rejectSearch && !selectedRejectStudent && (
-                                    <div className="absolute top-full left-0 right-0 bg-white border mt-1 max-h-40 overflow-y-auto z-10 shadow-lg rounded">
-                                        {students.filter(s => s.name.toLowerCase().includes(rejectSearch) || s.nis.includes(rejectSearch)).slice(0, 5).map(s => (
-                                            <div key={s.id} onClick={() => { setSelectedRejectStudent(s); setRejectSearch(s.name); }} className="p-2 hover:bg-blue-50 cursor-pointer text-sm flex items-center justify-between group">
-                                                <div><span className="font-bold">{s.name}</span> <span className="text-slate-500 text-xs">({s.nis})</span></div>
-                                                <UserCheck size={14} className="text-green-600 opacity-0 group-hover:opacity-100 transition-opacity" />
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
+                <div className="space-y-6 animate-fade-in">
+                    <div><h2 className="text-3xl font-extrabold text-slate-800 tracking-tight flex items-center gap-2"><UserMinus className="text-red-500"/> Tolak Eligible</h2><p className="text-slate-500 mt-1">Daftar siswa yang tidak mengambil jatah SNBP (mengundurkan diri).</p></div>
+                    
+                    <div className="glass-card rounded-[2rem] p-8">
+                        <div className="flex flex-col md:flex-row gap-4 items-end mb-8 bg-slate-50 p-6 rounded-2xl border border-slate-100 shadow-inner">
+                            <div className="flex-1 w-full">
+                                <label className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-2 block">Pilih Siswa Dari Daftar (Dropdown)</label>
+                                <select value={selectedRejectStudent?.id || ""} onChange={e => setSelectedRejectStudent(students.find(s => String(s.id) === e.target.value))} className="w-full border-none shadow-sm p-4 rounded-xl focus:ring-2 focus:ring-indigo-500 bg-white font-bold text-slate-700">
+                                    <option value="">-- Klik untuk Pilih Siswa --</option>
+                                    {students.filter(s => !rejectedStudents.find(r => String(r.studentId) === String(s.id))).map(s => (
+                                        <option key={s.id} value={s.id}>{s.name} (Kelas {s.class})</option>
+                                    ))}
+                                </select>
                             </div>
-                            <input 
-                                type="text" 
-                                placeholder="Alasan Menolak (Cth: Masuk Kedinasan)" 
-                                value={rejectReason}
-                                onChange={(e) => setRejectReason(e.target.value)}
-                                className="flex-1 p-2 border rounded text-sm"
-                            />
-                            <button onClick={handleSaveRejection} disabled={isSavingRejection} className={`bg-red-600 text-white px-4 py-2 rounded text-sm font-medium ${isSavingRejection ? 'opacity-50 cursor-not-allowed' : 'hover:bg-red-700'}`}>{isSavingRejection ? 'Menyimpan...' : 'Simpan'}</button>
+                            <div className="flex-1 w-full">
+                                <label className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-2 block">Alasan Penolakan</label>
+                                <input type="text" placeholder="Cth: Masuk Kedinasan, Pilih Lintas Minat..." value={rejectReason} onChange={e => setRejectReason(e.target.value)} className="w-full border-none shadow-sm p-4 rounded-xl focus:ring-2 focus:ring-indigo-500 bg-white font-bold text-slate-700"/>
+                            </div>
+                            <button onClick={handleSaveRejection} className="w-full md:w-auto bg-red-500 hover:bg-red-600 text-white font-bold px-8 py-4 rounded-xl shadow-lg shadow-red-500/30 transition-all hover:-translate-y-0.5 whitespace-nowrap">Tandai Menolak</button>
                         </div>
-                        {selectedRejectStudent && (
-                            <div className="mt-2 text-xs text-green-600 flex items-center gap-1 font-medium bg-green-50 p-2 rounded inline-block">
-                                <UserCheck size={12}/> Siswa Terpilih: {selectedRejectStudent.name}
-                            </div>
-                        )}
-                    </div>
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-sm text-left">
-                            <thead className="bg-red-50 text-red-900 font-bold"><tr><th className="p-3">NIS</th><th className="p-3">NISN</th><th className="p-3">Nama Siswa</th><th className="p-3">Alasan Menolak</th><th className="p-3 text-right">Aksi</th></tr></thead>
-                            <tbody>
-                                {rejectedStudents.length > 0 ? rejectedStudents.map(r => (
-                                    <tr key={r.studentId} className="border-b">
-                                        <td className="p-3 font-mono">{r.nis}</td>
-                                        <td className="p-3 font-mono">{r.nisn || "-"}</td>
-                                        <td className="p-3 font-bold">{r.name}</td>
-                                        <td className="p-3 text-red-600 italic">{r.reason}</td>
-                                        <td className="p-3 text-right"><button onClick={() => handleDeleteRejection(r.studentId)} className="text-slate-400 hover:text-red-600"><Trash2 size={16}/></button></td>
-                                    </tr>
-                                )) : <tr><td colSpan="5" className="p-8 text-center text-slate-400">Belum ada data siswa menolak.</td></tr>}
-                            </tbody>
-                        </table>
+
+                        <div className="overflow-x-auto rounded-2xl border border-slate-100">
+                            <table className="modern-table">
+                                <thead className="bg-red-50/50"><tr><th>NIS</th><th>Nama Siswa (Yang Menolak)</th><th>Alasan Menolak</th><th className="text-right">Aksi</th></tr></thead>
+                                <tbody>
+                                    {rejectedStudents.map(r => (
+                                        <tr key={r.studentId}>
+                                            <td className="font-mono text-slate-500 font-medium">{r.nis}</td>
+                                            <td><div className="font-bold text-slate-800">{r.name}</div></td>
+                                            <td><span className="bg-red-100 text-red-700 px-3 py-1 rounded-lg text-xs font-bold">{r.reason}</span></td>
+                                            <td className="text-right"><button onClick={()=>{if(confirm("Batalkan penolakan?")) dbDeleteRejection(r.studentId)}} className="text-slate-400 hover:text-red-600 bg-slate-50 hover:bg-red-50 p-2.5 rounded-xl transition-colors"><Trash2 size={18}/></button></td>
+                                        </tr>
+                                    ))}
+                                    {rejectedStudents.length === 0 && <tr><td colSpan="4" className="p-12 text-center text-slate-400 italic font-medium">Belum ada data siswa menolak.</td></tr>}
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
             );
 
-            const renderExport = () => (
-                <div className="bg-white rounded-xl shadow-sm border p-12 text-center flex flex-col items-center animate-fade-in">
-                    <div className="bg-green-100 p-6 rounded-full mb-4"><FileDown size={48} className="text-green-600"/></div>
-                    <h3 className="font-bold text-xl mb-2">Export Data Master</h3>
-                    <p className="text-slate-500 mb-6 max-w-md">Unduh seluruh data (Identitas + Nilai 5 Semester + Peringkat) dalam satu file Excel yang rapi.</p>
-                    <button onClick={handleExportFullData} className="bg-green-600 hover:bg-green-700 text-white px-8 py-3 rounded-xl font-bold flex items-center gap-2 shadow-lg"><Download/> Download Excel Master</button>
-                </div>
-            );
-
-            if (loading) return <div className="min-h-screen flex items-center justify-center text-slate-500 flex-col gap-2"><div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>Memuat Data Database...</div>;
-            if (permissionError) {
-                return (
-                    <div className="min-h-screen flex flex-col items-center justify-center p-8 bg-red-50 text-slate-800 animate-fade-in">
-                        <AlertCircle size={64} className="text-red-500 mb-4"/>
-                        <h1 className="text-2xl font-bold mb-2">Akses Database Ditolak</h1>
-                        <p className="text-center max-w-xl mb-6">Aplikasi tidak diizinkan membaca/menulis ke database Firebase Anda.<br/>Ini karena <b>Security Rules</b> di Firebase Console belum diatur.</p>
-                        <div className="bg-white p-6 rounded-lg shadow border border-slate-200 w-full max-w-2xl">
-                            <h3 className="font-bold mb-2 flex items-center gap-2"><Settings size={18}/> Cara Memperbaiki:</h3>
-                            <ol className="list-decimal list-inside text-sm space-y-2 mb-4">
-                                <li>Buka <b>Firebase Console</b> > <b>Firestore Database</b> > Tab <b>Rules</b>.</li>
-                                <li>Copy & Paste kode di bawah ini:</li>
-                            </ol>
-                            <div className="bg-slate-900 text-green-400 p-4 rounded-lg font-mono text-xs overflow-auto relative">
-<pre>{`rules_version = '2';
-service cloud.firestore {
-  match /databases/{database}/documents {
-    match /artifacts/{appId}/public/data/{document=**} {
-      allow read, write: if request.auth != null;
-    }
-    match /{document=**} {
-      allow read, write: if false;
-    }
-  }
-}`}</pre>
-                            </div>
-                            <p className="text-xs text-slate-500 mt-2">Klik <b>Publish</b> setelah paste.</p>
-                        </div>
-                        <button onClick={() => window.location.reload()} className="mt-8 bg-blue-600 text-white px-6 py-3 rounded-lg font-bold hover:bg-blue-700 transition">Sudah Diperbaiki? Refresh Halaman</button>
+            const renderManagement = () => (
+                <div className="space-y-6 animate-fade-in">
+                    <div>
+                        <h2 className="text-3xl font-extrabold text-slate-800 tracking-tight flex items-center gap-2">
+                            <Database className="text-indigo-600"/> Import & Manajemen Data
+                        </h2>
+                        <p className="text-slate-500 mt-1">Pusat import data massal rapor, backup (ekspor), dan reset sistem.</p>
                     </div>
-                )
-            }
-
-            return (
-                <div className="min-h-screen flex font-sans text-slate-600">
-                    {/* Sidebar */}
-                    <div className="w-64 bg-slate-900 text-white flex-shrink-0 hidden md:flex flex-col">
-                        <div className="p-6 border-b border-slate-800">
-                            <div className="flex items-center gap-2 text-blue-400 mb-1"><HeartHandshake size={24} /><span className="font-bold text-lg">STAR App</span></div>
-                            <div className="text-[10px] text-slate-500 leading-tight mb-3">Sistem Tabulasi & Peringkat Rapor</div>
-                            <div className="flex items-center gap-2 text-xs text-slate-400">
-                                {isOnline ? <span className="text-green-400 flex items-center gap-1"><Cloud size={12}/> Online</span> : <span className="text-red-400 flex items-center gap-1"><WifiOff size={12}/> Offline/Demo</span>}
-                            </div>
-                        </div>
-                        <nav className="flex-1 p-4 space-y-2">
-                            <button onClick={()=>setView('dashboard')} className={`w-full flex gap-3 px-4 py-3 rounded text-sm transition-colors ${view==='dashboard'?'bg-blue-600':'hover:bg-slate-800'}`}><BarChart3 size={18}/> Dashboard</button>
-                            <button onClick={()=>setView('input')} className={`w-full flex gap-3 px-4 py-3 rounded text-sm transition-colors ${view==='input'?'bg-blue-600':'hover:bg-slate-800'}`}><FileSpreadsheet size={18}/> Input Data</button>
-                            <button onClick={()=>setView('rankings')} className={`w-full flex gap-3 px-4 py-3 rounded text-sm transition-colors ${view==='rankings'?'bg-blue-600':'hover:bg-slate-800'}`}><Trophy size={18}/> Peringkat</button>
-                            <button onClick={()=>setView('eligible')} className={`w-full flex gap-3 px-4 py-3 rounded text-sm transition-colors ${view==='eligible'?'bg-blue-600':'hover:bg-slate-800'}`}><Award size={18}/> Menu Eligible</button>
-                            <button onClick={()=>setView('rejected')} className={`w-full flex gap-3 px-4 py-3 rounded text-sm transition-colors ${view==='rejected'?'bg-blue-600':'hover:bg-slate-800'}`}><UserMinus size={18}/> Menolak Eligible</button>
-                            <button onClick={()=>setView('export')} className={`w-full flex gap-3 px-4 py-3 rounded text-sm transition-colors ${view==='export'?'bg-blue-600':'hover:bg-slate-800'}`}><FileDown size={18}/> Export Data</button>
-                        </nav>
-                        <div className="p-4 border-t border-slate-800 text-xs text-center text-slate-500">By Pak Dhani Gemoy BK Mojokerto</div>
-                    </div>
-                    <div className="flex-1 flex flex-col h-screen overflow-hidden">
-                        <div className="md:hidden bg-slate-900 text-white p-4 flex justify-between"><span className="font-bold">STAR App</span></div>
-                        <div className="flex-1 overflow-y-auto p-8">
-                            {view === 'dashboard' && renderDashboard()}
-                            {view === 'input' && renderDataInput()}
-                            {view === 'rankings' && renderRankings()}
-                            {view === 'eligible' && renderEligible()}
-                            {view === 'rejected' && renderRejectedMenu()}
-                            {view === 'export' && renderExport()}
-                        </div>
-                    </div>
-                    <Modal isOpen={isModalOpen} onClose={()=>setIsModalOpen(false)} title="Data Siswa">
-                        <form onSubmit={handleSaveStudent} className="space-y-6">
-                            <div className="grid grid-cols-2 gap-4">
-                                <input required name="nis" defaultValue={editingStudent?.nis} placeholder="NIS" className="border p-2 rounded" />
-                                <input name="nisn" defaultValue={editingStudent?.nisn} placeholder="NISN" className="border p-2 rounded" />
-                                <input required name="name" defaultValue={editingStudent?.name} placeholder="Nama" className="border p-2 rounded" />
-                                <input required name="class" defaultValue={editingStudent?.class} placeholder="Kelas" className="border p-2 rounded" />
-                            </div>
-                            <div className="flex border-b mb-4 overflow-x-auto">
-                                {SEMESTERS.map(s => (
-                                    <button key={s.id} type="button" onClick={()=>setActiveSemesterInput(s.id)} className={`px-4 py-2 whitespace-nowrap ${activeSemesterInput===s.id ? 'border-b-2 border-blue-600 text-blue-600':''}`}>{s.label}</button>
-                                ))}
-                            </div>
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                {getSubjectsByLevel(SEMESTERS.find(s=>s.id===activeSemesterInput).level).map(sub => (
-                                    <div key={`${activeSemesterInput}_${sub.id}`}>
-                                        <label className="text-xs text-slate-500">{sub.name}</label>
-                                        <input 
-                                            type="number" 
-                                            value={currentGrades[activeSemesterInput]?.[sub.id] || 0}
-                                            onChange={(e) => updateCurrentGrades(activeSemesterInput, sub.id, e.target.value)}
-                                            className="border p-2 rounded w-full text-center" 
-                                        />
-                                    </div>
-                                ))}
-                            </div>
-                            <div className="flex justify-between items-center pt-4 border-t">
-                                <button type="button" onClick={()=>setPasteMode(!pasteMode)} className="flex items-center gap-1 text-sm text-green-600 hover:text-green-800"><ClipboardPaste size={14}/> Paste Nilai (Excel)</button>
-                                <div className="flex gap-2">
-                                    <button type="button" onClick={()=>setIsModalOpen(false)} className="px-4 py-2 rounded hover:bg-slate-100">Batal</button>
-                                    <button type="submit" className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Simpan</button>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        {/* Import Data Section */}
+                        <div className="glass-card rounded-[2rem] p-8 flex flex-col items-start relative overflow-hidden group border-indigo-50">
+                            <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-50 rounded-full blur-3xl -z-10 group-hover:bg-indigo-100 transition-colors"></div>
+                            <div className="bg-indigo-100 text-indigo-600 p-4 rounded-2xl mb-5 shadow-inner"><FileUp size={36}/></div>
+                            <h3 className="text-2xl font-extrabold text-slate-800 mb-2">Import Data Rapor</h3>
+                            <p className="text-slate-500 text-sm mb-6 flex-1 leading-relaxed">Unggah nilai rapor semester secara massal menggunakan format Excel template.</p>
+                            
+                            <div className="w-full space-y-4">
+                                <div>
+                                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 block">Pilih Semester Target</label>
+                                    <select value={importSemester} onChange={e=>setImportSemester(parseInt(e.target.value))} className="w-full border-none shadow-sm focus:ring-2 focus:ring-indigo-500 rounded-xl bg-slate-50 p-4 text-sm font-extrabold text-indigo-800 cursor-pointer">
+                                        {SEMESTERS.map(sem => <option key={sem.id} value={sem.id}>{sem.label}</option>)}
+                                    </select>
+                                </div>
+                                <div className="flex gap-3 pt-2">
+                                    <button onClick={handleDownloadTemplate} className="flex-1 bg-white border border-slate-200 shadow-sm text-slate-700 font-bold py-3.5 rounded-xl hover:bg-slate-50 transition-all text-sm flex items-center justify-center gap-2"><Download size={18}/> Template Excel</button>
+                                    <label className="flex-1 bg-indigo-600 text-white font-bold py-3.5 rounded-xl hover:bg-indigo-700 hover:-translate-y-0.5 shadow-lg shadow-indigo-600/30 transition-all text-sm flex items-center justify-center gap-2 cursor-pointer">
+                                        <UploadCloud size={18}/> Upload Data
+                                        <input type="file" onChange={handleFileUpload} className="hidden"/>
+                                    </label>
                                 </div>
                             </div>
+                        </div>
+                        
+                        {/* Export Data Section */}
+                        <div className="glass-card rounded-[2rem] p-8 flex flex-col items-start border-emerald-50 relative overflow-hidden group">
+                            <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-50 rounded-full blur-3xl -z-10 group-hover:bg-emerald-100 transition-colors"></div>
+                            <div className="bg-emerald-100 text-emerald-600 p-4 rounded-2xl mb-5 shadow-inner"><FileDown size={36}/></div>
+                            <h3 className="text-2xl font-extrabold text-slate-800 mb-2">Export Rekap Master</h3>
+                            <p className="text-slate-500 text-sm mb-6 flex-1 leading-relaxed">Unduh seluruh data siswa, nilai lengkap, serta peringkat akhir ke format Excel. (Nilai mapel akan otomatis dibiarkan kosong untuk mapel yang berbeda pada kelas 10/11).</p>
+                            <button onClick={handleExportFullData} className="w-full bg-emerald-500 text-white font-bold py-4 rounded-xl hover:bg-emerald-600 hover:-translate-y-0.5 shadow-lg shadow-emerald-500/30 transition-all text-base flex items-center justify-center gap-2"><Download size={20}/> Generate Rekap (Excel)</button>
+                        </div>
+
+                        {/* Danger Zone Section */}
+                        <div className="glass-card rounded-[2rem] p-8 flex flex-col items-start md:col-span-2 border-red-100 relative overflow-hidden group mt-4">
+                            <div className="absolute top-0 right-0 w-64 h-64 bg-red-50 rounded-full blur-3xl -z-10 group-hover:bg-red-100 transition-colors"></div>
+                            <div className="bg-red-100 text-red-600 p-4 rounded-2xl mb-5 shadow-inner"><AlertTriangle size={36}/></div>
+                            <h3 className="text-2xl font-extrabold text-red-600 mb-2">Zona Berbahaya (Reset Data)</h3>
+                            <p className="text-slate-600 text-sm mb-6 max-w-3xl leading-relaxed">Tindakan ini akan menghapus <b>SELURUH DATA SISWA, NILAI RAPOR 5 SEMESTER, DAN DAFTAR PENOLAKAN</b> secara permanen. Lakukan Export sebelum mereset sistem untuk angkatan baru.</p>
+                            <button onClick={handleDeleteAllData} className="bg-red-500 text-white font-bold py-4 px-10 rounded-xl hover:bg-red-600 shadow-lg shadow-red-500/30 transition-all text-sm flex items-center justify-center gap-3 hover:-translate-y-0.5"><Trash size={20}/> YA, HAPUS SEMUA DATA SISTEM SEKARANG</button>
+                        </div>
+                    </div>
+                    
+                    {/* PREVIEW IMPORT MODAL */}
+                    {importStage === 'preview' && (
+                        <div className="mt-10 bg-white rounded-[2rem] shadow-2xl border border-indigo-100 p-8 animate-fade-in z-20 relative">
+                            <div className="flex justify-between items-center mb-6 border-b border-slate-100 pb-4">
+                                <h3 className="text-xl font-extrabold text-slate-800">Preview Data ({SEMESTERS.find(s=>s.id===importSemester).label})</h3>
+                                <div className="bg-blue-50 text-blue-700 px-4 py-2 rounded-xl text-sm font-extrabold shadow-inner tracking-wide">Siswa Baru: {importStats.new} | Update Nilai: {importStats.updated}</div>
+                            </div>
+                            <div className="max-h-72 overflow-auto border border-slate-200 rounded-2xl mb-6">
+                                <table className="modern-table">
+                                    <thead className="bg-slate-50"><tr><th>NIS</th><th>Nama (Kelas 12)</th><th>Status</th><th>Total Tambahan</th></tr></thead>
+                                    <tbody>
+                                        {previewData.map((row, i) => (
+                                            <tr key={i}>
+                                                <td className="font-mono text-slate-500 font-medium">{row.nis}</td>
+                                                <td className="font-bold text-slate-800">{row.name} <br/><span className="text-xs text-slate-400 font-mono">{row.class}</span></td>
+                                                <td><span className={`px-2 py-1 rounded-lg text-xs font-bold ${row.status==='new'?'bg-emerald-100 text-emerald-700':'bg-amber-100 text-amber-700'}`}>{row.status==='new'?'BARU':'UPDATE'}</span></td>
+                                                <td className="font-extrabold text-indigo-600 text-lg">{row.total}</td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div className="flex gap-4">
+                                <button onClick={()=>{setImportStage('upload'); setPreviewData([]);}} className="px-8 py-4 bg-slate-100 text-slate-600 font-bold rounded-xl hover:bg-slate-200 transition-colors">Batal Import</button>
+                                <button onClick={handleConfirmImport} className="flex-1 bg-indigo-600 text-white font-extrabold text-lg py-4 rounded-xl hover:bg-indigo-700 shadow-xl shadow-indigo-600/30 transition-all hover:-translate-y-1">Simpan Data Ke Sistem</button>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+
+            // Tampilan Loading
+            if (loading) return (
+                <div className="min-h-screen bg-slate-50 flex items-center justify-center flex-col gap-6">
+                    <div className="relative">
+                        <div className="w-20 h-20 border-4 border-indigo-100 border-t-indigo-600 rounded-full animate-spin shadow-lg"></div>
+                        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-indigo-600"><Cloud size={24} /></div>
+                    </div>
+                    <div className="text-slate-600 font-bold tracking-widest text-sm animate-pulse">SINKRONISASI DATABASE...</div>
+                </div>
+            );
+
+            return (
+                <div className="min-h-screen flex bg-[#f0f4f8] font-sans text-slate-700 overflow-hidden">
+                    {/* Modern Sidebar Premium */}
+                    <div className="w-[280px] bg-gradient-to-b from-[#0f172a] to-[#1e1b4b] text-slate-300 flex-shrink-0 hidden md:flex flex-col shadow-2xl relative z-20">
+                        <div className="p-8 pb-6">
+                            <div className="flex items-center gap-4 text-white mb-2">
+                                <div className="bg-gradient-to-br from-indigo-500 to-purple-600 p-3 rounded-2xl shadow-lg shadow-indigo-500/40"><GraduationCap size={32} className="text-white drop-shadow-md"/></div>
+                                <div>
+                                    <span className="font-extrabold text-[22px] tracking-tight block text-white leading-none mb-1">SI ELI</span>
+                                    <span className="font-bold text-[10px] text-indigo-300 tracking-widest block uppercase">Aplikasi Eligible Siswa</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div className="px-8 pb-6">
+                            <div className="bg-white/5 rounded-2xl p-3.5 border border-white/10 flex items-center justify-between shadow-inner backdrop-blur-md">
+                                <span className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Status Database</span>
+                                <div className="flex items-center gap-2">
+                                    <div className="relative flex h-3 w-3"><span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${isOnline?'bg-emerald-400':'bg-red-400'}`}></span><span className={`relative inline-flex rounded-full h-3 w-3 ${isOnline?'bg-emerald-500':'bg-red-500'}`}></span></div>
+                                    <span className={`text-[10px] font-bold uppercase tracking-wider ${isOnline?'text-emerald-400':'text-red-400'}`}>{isOnline ? 'Terhubung' : 'Terputus'}</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="px-8 pt-2 pb-4 text-[10px] font-extrabold text-slate-500 uppercase tracking-widest">Menu Navigasi Utama</div>
+                        <nav className="flex-1 px-5 space-y-2 overflow-y-auto">
+                            {[
+                                { id: 'dashboard', label: 'Dasbor Utama', icon: BarChart3 },
+                                { id: 'input', label: 'Data Siswa', icon: FileSpreadsheet },
+                                { id: 'rankings', label: 'Peringkat', icon: Trophy },
+                                { id: 'eligible', label: 'Siswa Eligible', icon: Award },
+                                { id: 'rejected', label: 'Tolak Eligible', icon: UserMinus },
+                                { id: 'management', label: 'Import & Manajemen', icon: Database },
+                            ].map(item => {
+                                const Icon = item.icon; const isActive = view === item.id;
+                                return (
+                                    <button key={item.id} onClick={() => setView(item.id)} className={`w-full flex items-center gap-4 px-4 py-3.5 rounded-2xl text-sm font-bold transition-all duration-300 ${isActive ? 'bg-white/10 text-white shadow-lg border border-white/10 translate-x-1 backdrop-blur-sm' : 'text-slate-400 hover:bg-white/5 hover:text-white'}`}>
+                                        <Icon size={20} className={isActive ? "text-white" : "text-slate-500"}/> {item.label}
+                                    </button>
+                                );
+                            })}
+                        </nav>
+                        
+                        {/* SIDEBAR FOOTER (COPYRIGHT) */}
+                        <div className="p-6 mt-auto">
+                            <div className="bg-white/5 rounded-2xl p-4 border border-white/10 text-center shadow-inner backdrop-blur-sm">
+                                <div className="text-[9px] text-slate-400 mb-1.5 tracking-widest uppercase font-bold">Copyright Aplikasi</div>
+                                <div className="text-xs font-bold text-indigo-300 tracking-wide leading-relaxed">TIM BK Anti Sambat<br/>SMAS Al-Multazam</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="flex-1 flex flex-col h-screen overflow-hidden relative">
+                        {/* Header Mobile */}
+                        <div className="md:hidden bg-[#0f172a] text-white p-4 flex justify-between items-center shadow-lg relative z-30 border-b border-slate-800">
+                            <div className="flex items-center gap-3">
+                                <div className="bg-indigo-600 p-2 rounded-xl"><GraduationCap size={20}/></div>
+                                <span className="font-extrabold text-xl tracking-tight">SI ELI</span>
+                            </div>
+                            <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="p-2.5 bg-slate-800 rounded-xl hover:bg-slate-700 transition-colors">
+                                {isMobileMenuOpen ? <X size={20}/> : <Menu size={20}/>}
+                            </button>
+                        </div>
+                        
+                        {/* Dropdown Menu Mobile */}
+                        {isMobileMenuOpen && (
+                            <div className="md:hidden bg-[#0f172a] border-b border-slate-800 px-4 py-4 shadow-2xl absolute w-full z-20 flex flex-col gap-2 top-[76px]">
+                                {[{ id: 'dashboard', label: 'Dasbor Utama', icon: BarChart3 }, { id: 'input', label: 'Data Siswa', icon: FileSpreadsheet }, { id: 'rankings', label: 'Peringkat', icon: Trophy }, { id: 'eligible', label: 'Siswa Eligible', icon: Award }, { id: 'rejected', label: 'Tolak Eligible', icon: UserMinus }, { id: 'management', label: 'Import & Manajemen', icon: Database }].map(item => {
+                                    const Icon = item.icon; const isActive = view === item.id;
+                                    return (
+                                        <button key={item.id} onClick={() => { setView(item.id); setIsMobileMenuOpen(false); }} className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-xl text-sm font-bold transition-all ${isActive ? 'bg-indigo-600 text-white' : 'text-slate-300 hover:bg-slate-800'}`}>
+                                            <Icon size={18} className={isActive ? "text-white" : "text-slate-400"}/> {item.label}
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        )}
+
+                        <div className="flex-1 overflow-y-auto p-5 md:p-10 relative z-10 scroll-smooth flex flex-col">
+                            {/* MAIN CONTENT VIEWS */}
+                            <div className="flex-1">
+                                {view === 'dashboard' && renderDashboard()}
+                                {view === 'input' && renderDataInput()}
+                                {view === 'rankings' && renderRankings()}
+                                {view === 'eligible' && renderEligible()}
+                                {view === 'rejected' && renderRejectedMenu()}
+                                {view === 'management' && renderManagement()}
+                            </div>
+                            
+                            {/* MAIN FOOTER (COPYRIGHT) */}
+                            <div className="mt-12 pt-6 border-t border-slate-200/60 text-center w-full shrink-0">
+                                <p className="text-[11px] font-extrabold text-slate-400 tracking-widest uppercase">
+                                    &copy; {new Date().getFullYear()} Copyright Aplikasi <span className="text-indigo-500">TIM BK Anti Sambat</span> SMAS Al-Multazam
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    {/* Modal Input Siswa */}
+                    <Modal isOpen={isModalOpen} onClose={()=>setIsModalOpen(false)} title="Formulir Data Siswa">
+                        <form onSubmit={handleSaveStudent} className="space-y-6">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                                <div><label className="text-xs font-bold text-slate-500 mb-2 block uppercase tracking-widest">NIS</label><input required name="nis" defaultValue={editingStudent?.nis} className="w-full border-none shadow-sm p-4 rounded-xl focus:ring-2 focus:ring-indigo-500 bg-slate-50 font-mono text-sm font-bold" /></div>
+                                <div><label className="text-xs font-bold text-slate-500 mb-2 block uppercase tracking-widest">NISN</label><input name="nisn" defaultValue={editingStudent?.nisn} className="w-full border-none shadow-sm p-4 rounded-xl focus:ring-2 focus:ring-indigo-500 bg-slate-50 font-mono text-sm font-bold" /></div>
+                                <div className="md:col-span-2"><label className="text-xs font-bold text-slate-500 mb-2 block uppercase tracking-widest">Nama Lengkap</label><input required name="name" defaultValue={editingStudent?.name} className="w-full border-none shadow-sm p-4 rounded-xl focus:ring-2 focus:ring-indigo-500 bg-slate-50 text-base font-extrabold text-slate-800" /></div>
+                                <div className="md:col-span-2"><label className="text-xs font-bold text-slate-500 mb-2 block uppercase tracking-widest">Kelas Akhir (Jenjang 12)</label><input required name="class" defaultValue={editingStudent?.class} placeholder="Contoh: 12 IPA 1" className="w-full border-none shadow-sm p-4 rounded-xl focus:ring-2 focus:ring-indigo-500 bg-slate-50 text-base font-bold text-slate-800" /></div>
+                            </div>
+                            
+                            <div className="pt-6 border-t border-slate-100">
+                                <h4 className="font-extrabold text-slate-800 mb-4 flex items-center gap-2 text-lg"><FileSpreadsheet className="text-indigo-500" size={20}/> Input Nilai Rapor Manual</h4>
+                                <div className="flex overflow-x-auto bg-slate-100 p-1.5 rounded-2xl mb-6 shadow-inner">
+                                    {SEMESTERS.map(s => (
+                                        <button key={s.id} type="button" onClick={()=>setActiveSemesterInput(s.id)} className={`px-5 py-2.5 whitespace-nowrap text-sm font-extrabold rounded-xl transition-all ${activeSemesterInput===s.id ? 'bg-white shadow-md text-indigo-600 scale-105':'text-slate-500 hover:text-slate-800 hover:bg-slate-200'}`}>{s.label}</button>
+                                    ))}
+                                </div>
+                                <div className="grid grid-cols-2 md:grid-cols-4 gap-5">
+                                    {getSubjectsByLevel(SEMESTERS.find(s=>s.id===activeSemesterInput).level).map(sub => (
+                                        <div key={`${activeSemesterInput}_${sub.id}`} className="bg-slate-50 p-3 rounded-2xl border border-slate-100 shadow-sm">
+                                            <label className="text-xs font-extrabold text-slate-500 mb-2 block truncate text-center uppercase tracking-widest">{sub.name}</label>
+                                            <input type="number" min="0" max="100" value={currentGrades[activeSemesterInput]?.[sub.id] || 0} onChange={(e) => updateCurrentGrades(activeSemesterInput, sub.id, e.target.value)} className="w-full border-none p-3 rounded-xl focus:ring-2 focus:ring-indigo-500 bg-white text-center font-extrabold text-indigo-700 text-lg shadow-inner" />
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <div className="flex flex-col-reverse md:flex-row justify-between items-center pt-8 border-t border-slate-100 gap-4 mt-6">
+                                <button type="button" onClick={()=>setPasteMode(!pasteMode)} className="text-sm font-extrabold text-emerald-600 hover:text-emerald-700 flex items-center gap-1 bg-emerald-50 px-4 py-2 rounded-xl transition-colors"><ClipboardPaste size={16}/> Mode Tempel Cepat (Excel)</button>
+                                <div className="flex gap-3 w-full md:w-auto">
+                                    <button type="button" onClick={()=>setIsModalOpen(false)} className="flex-1 md:flex-none px-6 py-3.5 rounded-xl font-bold text-slate-500 hover:bg-slate-100 transition-colors">Batalkan</button>
+                                    <button type="submit" className="flex-1 md:flex-none bg-indigo-600 text-white px-8 py-3.5 rounded-xl font-extrabold hover:bg-indigo-700 hover:-translate-y-0.5 shadow-xl shadow-indigo-600/30 transition-all flex items-center justify-center gap-2 text-base"><Save size={18}/> Simpan Perubahan</button>
+                                </div>
+                            </div>
+                            
                             {pasteMode && (
-                                <div className="mt-2 p-2 bg-slate-50 border rounded animate-fade-in">
-                                    <p className="text-xs mb-1 text-slate-500">Paste baris nilai dari Excel (urutan mapel harus sama):</p>
-                                    <div className="flex gap-2">
-                                        <input id="pasteInput" className="flex-1 border p-1 rounded text-xs" placeholder="Contoh: 80 90 85..."/>
-                                        <button type="button" onClick={()=>{
-                                            const val = document.getElementById('pasteInput').value;
-                                            handlePasteData(val, activeSemesterInput, getSubjectsByLevel(SEMESTERS.find(s=>s.id===activeSemesterInput).level));
-                                        }} className="bg-green-600 text-white px-3 rounded text-xs">Ok</button>
+                                <div className="p-5 bg-emerald-50 border border-emerald-100 rounded-2xl animate-fade-in mt-4 shadow-sm">
+                                    <p className="text-xs mb-3 text-emerald-800 font-bold tracking-wide">PASTE BARIS NILAI DARI EXCEL (Urutan harus sama persis dengan kotak di atas):</p>
+                                    <div className="flex gap-3">
+                                        <input id="pasteInput" className="flex-1 border-none shadow-inner p-3 rounded-xl text-sm font-mono focus:ring-2 focus:ring-emerald-500 bg-white" placeholder="Contoh: 80 85 90 92 ..."/>
+                                        <button type="button" onClick={()=>{ handlePasteData(document.getElementById('pasteInput').value, activeSemesterInput, getSubjectsByLevel(SEMESTERS.find(s=>s.id===activeSemesterInput).level)); }} className="bg-emerald-600 hover:bg-emerald-700 text-white px-6 rounded-xl text-sm font-extrabold transition-all shadow-md shadow-emerald-600/20 hover:-translate-y-0.5">Terapkan Nilai</button>
                                     </div>
                                 </div>
                             )}
                         </form>
                     </Modal>
-                    <Modal isOpen={isImportModalOpen} onClose={()=>setIsImportModalOpen(false)} title="Import Excel">
-                         {importStage === 'upload' ? (
-                             <div className="space-y-4">
-                                <div className="flex justify-center mb-4 bg-slate-50 p-2 rounded-lg">
-                                    {SEMESTERS.map(sem => (
-                                        <button key={sem.id} onClick={()=>setImportSemester(sem.id)} className={`px-4 py-2 text-sm rounded transition-colors ${importSemester===sem.id ? 'bg-green-600 text-white font-bold shadow-md' : 'text-slate-600 hover:bg-slate-200'}`}>
-                                            {sem.label}
-                                        </button>
-                                    ))}
-                                </div>
-                                <div className="text-center mb-4 p-4 border border-blue-100 bg-blue-50 rounded text-sm text-blue-800">
-                                    Anda akan mengimport nilai untuk <b>{SEMESTERS.find(s=>s.id===importSemester).label}</b>
-                                </div>
-                                 <button onClick={handleDownloadTemplate} className="w-full border-2 border-dashed p-8 rounded text-center hover:bg-slate-50 border-slate-300 transition-colors">
-                                    <Download className="mx-auto mb-2 text-slate-400"/>
-                                    <span className="font-semibold text-slate-600">Download Template (Sesuai Semester)</span>
-                                 </button>
-                                 <input type="file" onChange={handleFileUpload} className="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer"/>
-                             </div>
-                         ) : (
-                             <div>
-                                 <div className="mb-4 bg-blue-50 p-3 rounded text-sm border border-blue-200">
-                                     <h4 className="font-bold text-blue-900 mb-2">Preview Import Data ({SEMESTERS.find(s=>s.id===importSemester).label})</h4>
-                                     <p>Siswa Baru: <b>{importStats.new}</b> | Update Data: <b>{importStats.updated}</b></p>
-                                 </div>
-                                 <div className="max-h-60 overflow-y-auto border rounded mb-4">
-                                     <table className="spreadsheet-table w-full">
-                                         <thead>
-                                             <tr><th>NIS</th><th>NISN</th><th>Nama</th><th>Status</th><th>Total</th><th>Rata-rata</th></tr>
-                                         </thead>
-                                         <tbody>
-                                             {previewData.map((row, i) => (
-                                                 <tr key={i} className={row.status === 'new' ? 'new' : 'existing'}>
-                                                     <td>{row.nis}</td>
-                                                     <td>{row.nisn}</td>
-                                                     <td>{row.name}</td>
-                                                     <td>{row.status==='new' ? 'Baru' : 'Update'}</td>
-                                                     <td className="font-bold">{row.total}</td>
-                                                     <td>{row.average}</td>
-                                                 </tr>
-                                             ))}
-                                         </tbody>
-                                     </table>
-                                 </div>
-                                 <div className="flex gap-2">
-                                     <button onClick={()=>{setImportStage('upload'); setPreviewData([]);}} className="px-4 py-2 border rounded hover:bg-slate-50">Batal</button>
-                                     <button onClick={handleConfirmImport} className="bg-green-600 text-white flex-1 py-2 rounded hover:bg-green-700 font-bold">Simpan Ke Database</button>
-                                 </div>
-                             </div>
-                         )}
-                    </Modal>
-                    <Modal isOpen={isSubjectModalOpen} onClose={()=>setIsSubjectModalOpen(false)} title="Atur Mapel">
-                        <div className="space-y-4">
-                            <div className="flex border-b">
-                                {[10,11,12].map(l => <button key={l} onClick={()=>setActiveLevelTab(l)} className={`px-4 py-2 ${activeLevelTab===l?'border-b-2 border-blue-600':''}`}>Kls {l}</button>)}
-                            </div>
+
+                    {/* Modal Mapel */}
+                    <Modal isOpen={isSubjectModalOpen} onClose={()=>setIsSubjectModalOpen(false)} title="Pengaturan Mata Pelajaran">
+                        <div className="space-y-6">
                             
-                            <div className="bg-slate-50 p-3 rounded border border-slate-200">
-                                <div className="flex justify-between items-center mb-3">
-                                    <h4 className="font-bold text-sm text-slate-700">Import/Export Mapel Excel</h4>
-                                    <div className="flex gap-2">
-                                        <button onClick={handleDownloadSubjectTemplate} className="px-3 py-1 bg-white border border-slate-300 rounded text-xs hover:bg-slate-50 flex items-center gap-1 text-slate-600"><Download size={12}/> Template</button>
-                                        <label className="px-3 py-1 bg-green-600 text-white rounded text-xs hover:bg-green-700 flex items-center gap-1 cursor-pointer">
-                                            <UploadCloud size={12}/> Upload Excel
-                                            <input type="file" onChange={handleSubjectFileUpload} className="hidden"/>
-                                        </label>
-                                    </div>
+                            <div className="flex justify-between items-center bg-slate-50 p-4 rounded-2xl border border-slate-100 mb-2">
+                                <div>
+                                    <h4 className="font-extrabold text-sm text-slate-700">Import Massal Mapel (Excel)</h4>
+                                    <p className="text-xs text-slate-500">Unduh template, isi, lalu upload sesuai kelas.</p>
                                 </div>
-                                <div className="text-[10px] text-slate-500 leading-tight">
-                                    * Download template untuk mengedit mapel yang ada atau menambah baru secara massal.
+                                <div className="flex gap-2">
+                                    <button onClick={handleDownloadSubjectTemplate} className="bg-white border border-slate-200 text-slate-600 px-4 py-2 rounded-xl text-xs font-bold shadow-sm flex items-center gap-2 hover:bg-slate-50"><Download size={14}/> Template</button>
+                                    <label className="bg-indigo-600 text-white px-4 py-2 rounded-xl text-xs font-bold shadow-md hover:bg-indigo-700 flex items-center gap-2 cursor-pointer transition-colors">
+                                        <UploadCloud size={14}/> Upload Excel
+                                        <input type="file" onChange={handleSubjectFileUpload} className="hidden"/>
+                                    </label>
                                 </div>
                             </div>
 
-                            <form onSubmit={handleAddSubject} className="flex gap-2 border-t pt-4">
-                                <input value={newSubjectName} onChange={e=>setNewSubjectName(e.target.value)} placeholder="Nama Mapel Baru..." className="border p-2 rounded flex-1 text-sm"/>
-                                <button className="bg-blue-600 text-white px-4 rounded text-sm hover:bg-blue-700">Tambah Manual</button>
-                            </form>
-                            <div className="max-h-60 overflow-y-auto space-y-2">
-                                {getSubjectsByLevel(activeLevelTab).map(s => (
-                                    <div key={s.id} className="flex justify-between p-2 border rounded items-center hover:bg-slate-50 bg-white gap-3">
-                                        <div className="flex items-center gap-2">
-                                            <span className="text-xs text-slate-400 w-4">No.</span>
-                                            <input 
-                                                type="number" 
-                                                defaultValue={s.order} 
-                                                onBlur={(e) => handleUpdateSubjectOrder(s, e.target.value)}
-                                                onKeyDown={(e) => {if(e.key==='Enter') e.target.blur()}}
-                                                className="w-12 border p-1 rounded text-center font-bold text-slate-700 focus:ring-2 focus:ring-blue-500 outline-none text-sm"
-                                            />
-                                        </div>
-                                        <span className="flex-1 font-medium text-slate-700 text-sm">{s.name}</span>
-                                        <button onClick={()=>handleDeleteSubjectFromLevel(s.id, activeLevelTab)} className="text-red-500 text-xs bg-red-50 p-2 rounded hover:bg-red-100 flex items-center gap-1 font-bold border border-red-200 transition-colors"><Trash2 size={14}/></button>
-                                    </div>
+                            <div className="flex bg-slate-100 p-1.5 rounded-2xl shadow-inner mt-4">
+                                {[10,11,12].map(l => (
+                                    <button key={l} onClick={() => { setActiveLevelTab(l); setSelectedSubjects([]); }} className={`flex-1 py-2.5 text-sm font-extrabold rounded-xl transition-all ${activeLevelTab===l?'bg-white shadow-md text-indigo-600 scale-105':'text-slate-500 hover:bg-slate-200'}`}>Kelas {l}</button>
                                 ))}
+                            </div>
+
+                            <form onSubmit={handleAddSubject} className="flex gap-3">
+                                <input required value={newSubjectName} onChange={e=>setNewSubjectName(e.target.value)} placeholder="Ketik nama mata pelajaran baru..." className="border-none shadow-sm p-4 rounded-2xl flex-1 text-sm focus:ring-2 focus:ring-indigo-500 bg-slate-50 font-bold text-slate-800"/>
+                                <button className="bg-indigo-600 text-white px-8 rounded-2xl text-sm font-extrabold hover:bg-indigo-700 shadow-lg shadow-indigo-600/30 transition-all flex items-center gap-2 hover:-translate-y-0.5"><Plus size={18}/> Tambah Mapel</button>
+                            </form>
+                            
+                            <div className="bg-slate-50 rounded-2xl border border-slate-100 p-2 shadow-inner">
+                                <div className="flex justify-between items-center mb-2 px-3 pt-2">
+                                    <div className="flex items-center gap-3">
+                                        <input type="checkbox" className="w-4 h-4 cursor-pointer accent-indigo-600" 
+                                            checked={getSubjectsByLevel(activeLevelTab).length > 0 && selectedSubjects.length === getSubjectsByLevel(activeLevelTab).length}
+                                            onChange={(e) => handleSelectAllSubjects(e, getSubjectsByLevel(activeLevelTab))}
+                                        />
+                                        <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">Pilih Semua</span>
+                                    </div>
+                                    {selectedSubjects.length > 0 && (
+                                        <button onClick={handleBulkDeleteSubjects} type="button" className="bg-red-100 text-red-600 hover:bg-red-500 hover:text-white px-4 py-1.5 rounded-lg text-xs font-extrabold flex items-center gap-2 transition-colors">
+                                            <Trash2 size={14}/> Hapus ({selectedSubjects.length}) Mapel
+                                        </button>
+                                    )}
+                                </div>
+                                
+                                <div className="max-h-[250px] overflow-y-auto pr-2 space-y-2 pb-2">
+                                    {getSubjectsByLevel(activeLevelTab).map((s, i) => (
+                                        <div key={s.id} className={`flex justify-between p-3.5 border rounded-2xl items-center bg-white shadow-sm group hover:shadow-md transition-all hover:-translate-y-0.5 ${selectedSubjects.includes(s.id) ? 'border-indigo-300 ring-2 ring-indigo-50' : 'border-slate-100'}`}>
+                                            <div className="flex items-center gap-4 flex-1">
+                                                <input type="checkbox" className="w-4 h-4 cursor-pointer accent-indigo-600"
+                                                    checked={selectedSubjects.includes(s.id)}
+                                                    onChange={() => handleSelectSubject(s.id)}
+                                                />
+                                                <div className="flex flex-col items-center justify-center bg-slate-50 p-1.5 rounded-xl border border-slate-100">
+                                                    <span className="text-[9px] font-extrabold text-slate-400 uppercase tracking-widest mb-1">No.Urut</span>
+                                                    <input type="number" defaultValue={s.order} onBlur={(e) => handleUpdateSubjectOrder(s, e.target.value)} className="w-12 border-none p-1 rounded-lg text-center font-extrabold text-indigo-600 focus:ring-2 focus:ring-indigo-500 text-sm bg-white shadow-sm"/>
+                                                </div>
+                                                <div className="h-10 w-px bg-slate-200"></div>
+                                                <span className="font-extrabold text-slate-700 text-base truncate tracking-tight">{s.name}</span>
+                                            </div>
+                                            <button type="button" onClick={()=>handleDeleteSubjectFromLevel(s.id, activeLevelTab)} className="text-red-400 hover:text-red-600 bg-red-50 hover:bg-red-100 p-2.5 rounded-xl transition-colors"><Trash2 size={18}/></button>
+                                        </div>
+                                    ))}
+                                </div>
                             </div>
                         </div>
                     </Modal>
@@ -1294,7 +1043,7 @@ service cloud.firestore {
         };
 
         const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(<App />);
+        root.render(<ErrorBoundary><App /></ErrorBoundary>);
     </script>
 </body>
 </html>
